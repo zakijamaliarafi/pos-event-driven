@@ -1,0 +1,121 @@
+<?php
+use App\Domain\Orders\SubmitOrder;
+use App\Domain\Orders\TransitionOrder;
+use App\Models\Order;
+use App\Models\Product;
+use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
+use Livewire\Component;
+?>
+
+<div class="min-h-screen bg-slate-50 text-slate-900">
+    <?php if (isset($component)) { $__componentOriginal8b48e0c2a9b3e1472da7ff63186d471b = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal8b48e0c2a9b3e1472da7ff63186d471b = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.pos-nav','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('pos-nav'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal8b48e0c2a9b3e1472da7ff63186d471b)): ?>
+<?php $attributes = $__attributesOriginal8b48e0c2a9b3e1472da7ff63186d471b; ?>
+<?php unset($__attributesOriginal8b48e0c2a9b3e1472da7ff63186d471b); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal8b48e0c2a9b3e1472da7ff63186d471b)): ?>
+<?php $component = $__componentOriginal8b48e0c2a9b3e1472da7ff63186d471b; ?>
+<?php unset($__componentOriginal8b48e0c2a9b3e1472da7ff63186d471b); ?>
+<?php endif; ?>
+    <main class="mx-auto max-w-7xl space-y-8 px-5 py-8">
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-widest text-blue-700">Self-service</p>
+            <h1 class="mt-1 text-3xl font-bold">Place an order</h1>
+            <p class="mt-2 text-slate-600">Select products, then pay cash at the cashier.</p>
+        </div>
+
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($message): ?><div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-900"><?php echo e($message); ?></div><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['cart'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['order'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        <form wire:submit="submit" class="grid gap-8 lg:grid-cols-[1fr_20rem]">
+            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-start justify-between gap-3">
+                            <h2 class="font-semibold"><?php echo e($product->name); ?></h2>
+                            <span class="text-sm font-semibold text-blue-700"><?php echo e(config('pos.currency')); ?> <?php echo e(number_format($product->active_price, 0)); ?></span>
+                        </div>
+                        <p class="mt-2 text-xs text-slate-500">Available: <?php echo e(max(0, $product->current_stock - $product->reserved_stock)); ?></p>
+                        <label class="mt-4 block text-sm text-slate-600" for="quantity-<?php echo e($product->id); ?>">Quantity</label>
+                        <input id="quantity-<?php echo e($product->id); ?>" type="number" min="0" max="100" wire:model.number="quantities.<?php echo e($product->id); ?>" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-600 focus:ring-blue-600">
+                    </div>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
+                    <p class="text-slate-500">No products are available yet.</p>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </section>
+            <aside class="h-fit space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-semibold">Order details</h2>
+                <label class="block text-sm font-medium">Table number<input type="number" min="1" wire:model="tableNumber" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"></label>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['table_number'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><p class="text-sm text-red-600"><?php echo e($message); ?></p><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <label class="block text-sm font-medium">Your name<input type="text" wire:model="customerName" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"></label>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['customer_name'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><p class="text-sm text-red-600"><?php echo e($message); ?></p><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <label class="block text-sm font-medium">Phone (optional)<input type="tel" wire:model="customerPhone" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"></label>
+                <button type="submit" class="w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800" wire:loading.attr="disabled">Submit order</button>
+            </aside>
+        </form>
+
+        <section wire:poll.3s class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 class="mb-4 text-lg font-semibold">Your recent orders</h2>
+            <div class="space-y-3">
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $orders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                    <div data-pos-order-id="<?php echo e($order->id); ?>" class="flex flex-wrap justify-between gap-2 border-b border-slate-100 pb-3 text-sm">
+                        <span class="font-semibold"><?php echo e($order->order_number); ?></span>
+                        <span class="capitalize text-blue-700"><?php echo e(str_replace('_', ' ', $order->status)); ?></span>
+                        <span><?php echo e(config('pos.currency')); ?> <?php echo e(number_format($order->total_amount, 0)); ?></span>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($order->status, ['awaiting_inventory', 'waiting_payment'], true)): ?>
+                            <button wire:click="cancel(<?php echo e($order->id); ?>)" wire:confirm="Cancel this unpaid order?" class="rounded-lg border border-slate-300 px-2 py-1 text-slate-700 hover:border-red-300 hover:text-red-700">Cancel</button>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </div>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
+                    <p class="text-sm text-slate-500">Your orders will appear here.</p>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </div>
+        </section>
+    </main>
+</div><?php /**PATH /var/www/html/storage/framework/views/livewire/views/ca368b32.blade.php ENDPATH**/ ?>
