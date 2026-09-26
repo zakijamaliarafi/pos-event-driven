@@ -17,8 +17,8 @@ final class InventoryEventConsumer
     {
         match ($event->name) {
             'OrderSubmitted' => $this->reserve($event),
-            'PreparationStarted' => $this->finishReservation($event, 'consumed'),
-            'OrderCancelled', 'OrderExpired' => $this->finishReservation($event, 'released'),
+            'OrderVerified', 'PreparationStarted' => $this->finishReservation($event, 'consumed'),
+            'OrderCancelled', 'OrderExpired', 'OrderRejected' => $this->finishReservation($event, 'released'),
             default => null,
         };
     }

@@ -50,7 +50,7 @@ new class extends Component {
         ], deviceId: $this->deviceId);
 
         $this->quantities = [];
-        $this->message = "Order {$order->order_number} submitted. Please pay at the cashier within 15 minutes.";
+        $this->message = "Order {$order->order_number} submitted. A waiter will verify it before preparation. Please pay at the cashier after your meal.";
         $this->dispatch('customer-order-submitted', orderId: $order->id);
     }
 
@@ -77,7 +77,7 @@ new class extends Component {
         <div>
             <p class="text-sm font-semibold uppercase tracking-widest text-blue-700">Self-service</p>
             <h1 class="mt-1 text-3xl font-bold">Place an order</h1>
-            <p class="mt-2 text-slate-600">Select products, then pay cash at the cashier.</p>
+            <p class="mt-2 text-slate-600">Select products. A waiter will verify your order, and you can pay cash after your meal.</p>
         </div>
 
         @if($message)<div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-900">{{ $message }}</div>@endif
@@ -117,9 +117,9 @@ new class extends Component {
                 @forelse($orders as $order)
                     <div data-pos-order-id="{{ $order->id }}" class="flex flex-wrap justify-between gap-2 border-b border-slate-100 pb-3 text-sm">
                         <span class="font-semibold">{{ $order->order_number }}</span>
-                        <span class="capitalize text-blue-700">{{ str_replace('_', ' ', $order->status) }}</span>
+                        <span class="capitalize text-blue-700">{{ match ($order->status) { 'awaiting_inventory' => 'Checking stock', 'awaiting_verification' => 'Waiting for waiter', 'verifying' => 'Waiter verified', 'pending' => 'Queued for kitchen', 'awaiting_payment' => 'Please pay at cashier', default => str_replace('_', ' ', $order->status) } }}</span>
                         <span>{{ config('pos.currency') }} {{ number_format($order->total_amount, 0) }}</span>
-                        @if(in_array($order->status, ['awaiting_inventory', 'waiting_payment'], true))
+                        @if(in_array($order->status, ['awaiting_inventory', 'awaiting_verification'], true))
                             <button wire:click="cancel({{ $order->id }})" wire:confirm="Cancel this unpaid order?" class="rounded-lg border border-slate-300 px-2 py-1 text-slate-700 hover:border-red-300 hover:text-red-700">Cancel</button>
                         @endif
                     </div>

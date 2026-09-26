@@ -38,7 +38,7 @@ use Livewire\Component;
         <div>
             <p class="text-sm font-semibold uppercase tracking-widest text-blue-700">Self-service</p>
             <h1 class="mt-1 text-3xl font-bold">Place an order</h1>
-            <p class="mt-2 text-slate-600">Select products, then pay cash at the cashier.</p>
+            <p class="mt-2 text-slate-600">Select products. A waiter will verify your order, and you can pay cash after your meal.</p>
         </div>
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($message): ?><div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-900"><?php echo e($message); ?></div><?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -106,9 +106,9 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $orders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
                     <div data-pos-order-id="<?php echo e($order->id); ?>" class="flex flex-wrap justify-between gap-2 border-b border-slate-100 pb-3 text-sm">
                         <span class="font-semibold"><?php echo e($order->order_number); ?></span>
-                        <span class="capitalize text-blue-700"><?php echo e(str_replace('_', ' ', $order->status)); ?></span>
+                        <span class="capitalize text-blue-700"><?php echo e(match ($order->status) { 'awaiting_inventory' => 'Checking stock', 'awaiting_verification' => 'Waiting for waiter', 'verifying' => 'Waiter verified', 'pending' => 'Queued for kitchen', 'awaiting_payment' => 'Please pay at cashier', default => str_replace('_', ' ', $order->status) }); ?></span>
                         <span><?php echo e(config('pos.currency')); ?> <?php echo e(number_format($order->total_amount, 0)); ?></span>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($order->status, ['awaiting_inventory', 'waiting_payment'], true)): ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($order->status, ['awaiting_inventory', 'awaiting_verification'], true)): ?>
                             <button wire:click="cancel(<?php echo e($order->id); ?>)" wire:confirm="Cancel this unpaid order?" class="rounded-lg border border-slate-300 px-2 py-1 text-slate-700 hover:border-red-300 hover:text-red-700">Cancel</button>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>

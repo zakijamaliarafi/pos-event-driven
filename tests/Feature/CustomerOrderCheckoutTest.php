@@ -23,6 +23,7 @@ test('customer order calculates price on the server and emits an outbox event', 
     $order = Order::firstOrFail();
     expect($order->total_amount)->toBe('50000.00')
         ->and($order->status)->toBe('awaiting_inventory')
+        ->and($order->expires_at)->toBeNull()
         ->and($order->items()->count())->toBe(1);
     $this->assertDatabaseHas('domain_outbox', ['event_name' => 'OrderSubmitted', 'aggregate_id' => $order->id]);
 });

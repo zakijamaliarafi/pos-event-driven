@@ -71,7 +71,7 @@ final class SubmitOrder
                 'status' => 'awaiting_inventory',
                 'total_amount' => $total,
                 'payment_method' => 'cash',
-                'expires_at' => now()->addMinutes(15),
+                'expires_at' => $deviceId === null ? now()->addMinutes(15) : null,
             ]);
 
             $order->items()->createMany($lines);

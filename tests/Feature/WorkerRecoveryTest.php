@@ -60,6 +60,48 @@ test('Redis worker recovers the full order workflow after an outage without dupl
     }
 });
 
+test('Redis worker resumes a verified customer order before kitchen preparation', function () {
+    Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    $queue = 'pos-recovery-'.Str::lower(Str::random(12));
+    config(['pos.domain_queue' => $queue]);
+
+    try {
+        $product = Product::factory()->withStock(1)->create(['price' => 12000]);
+        $cashier = User::factory()->create();
+        $order = app(SubmitOrder::class)->handle([
+            'order_type' => 'dine_in', 'table_number' => 2, 'customer_name' => 'Recovery customer',
+            'cart' => [['id' => $product->id, 'qty' => 1]],
+        ], deviceId: (string) Str::uuid());
+
+        drainRecoveryQueue($queue);
+        expect($order->fresh()->status)->toBe('awaiting_verification')
+            ->and($product->fresh()->reserved_stock)->toBe(1);
+
+        app(TransitionOrder::class)->verify($order->id);
+        expect($order->fresh()->status)->toBe('verifying');
+        drainRecoveryQueue($queue);
+        expect($order->fresh()->status)->toBe('pending')
+            ->and($product->fresh()->current_stock)->toBe(0)
+            ->and($product->fresh()->reserved_stock)->toBe(0);
+
+        app(TransitionOrder::class)->startPreparation($order->id);
+        drainRecoveryQueue($queue);
+        app(TransitionOrder::class)->markReady($order->id);
+        drainRecoveryQueue($queue);
+        app(TransitionOrder::class)->complete($order->id);
+        drainRecoveryQueue($queue);
+        expect($order->fresh()->status)->toBe('awaiting_payment');
+
+        app(RecordCashPayment::class)->handle($order->id, $cashier->id, 'recovery-after-meal');
+        drainRecoveryQueue($queue);
+        expect($order->fresh()->status)->toBe('completed')
+            ->and(DB::table('order_read_models')->where('order_id', $order->id)->value('paid_at'))->not->toBeNull()
+            ->and(DB::table('domain_outbox')->whereNull('processed_at')->count())->toBe(0);
+    } finally {
+        Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    }
+});
+
 function drainRecoveryQueue(string $queue): void
 {
     for ($pass = 0; $pass < 30; $pass++) {

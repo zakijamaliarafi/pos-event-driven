@@ -25,7 +25,10 @@ final class RecordCashPayment
                 return $order;
             }
 
-            if ($order->status !== 'waiting_payment' || $order->expires_at?->isPast()) {
+            $cashierSale = $order->device_id === null && $order->status === 'waiting_payment' && ! $order->expires_at?->isPast();
+            $servedCustomerOrder = $order->device_id !== null && $order->status === 'awaiting_payment';
+
+            if (! $cashierSale && ! $servedCustomerOrder) {
                 throw ValidationException::withMessages(['payment' => 'This order is not awaiting payment.']);
             }
 

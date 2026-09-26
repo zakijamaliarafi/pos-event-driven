@@ -46,8 +46,11 @@ new class extends Component {
 
     public function pay(int $orderId, RecordCashPayment $payments): void
     {
+        abort_unless(Auth::user()?->hasRole('cashier'), 403);
         $order = $payments->handle($orderId, (int) Auth::id(), "cash-order-{$orderId}");
-        $this->message = "Cash recorded for {$order->order_number}. The kitchen will receive it shortly.";
+        $this->message = $order->device_id === null
+            ? "Cash recorded for {$order->order_number}. The kitchen will receive it shortly."
+            : "Cash recorded for {$order->order_number}. The order is complete.";
     }
 
     public function cancel(int $orderId, TransitionOrder $orders): void
@@ -60,7 +63,10 @@ new class extends Component {
     {
         return [
             'products' => Product::query()->with('discounts')->where('is_available', true)->orderBy('name')->get(),
-            'activeOrders' => Order::query()->whereDate('created_at', today())->whereIn('status', ['awaiting_inventory', 'waiting_payment', 'pending', 'preparing', 'ready'])->latest()->get(),
+            'activeOrders' => Order::query()
+                ->whereIn('status', ['awaiting_inventory', 'awaiting_verification', 'verifying', 'waiting_payment', 'pending', 'preparing', 'ready', 'awaiting_payment'])
+                ->where(fn ($query) => $query->whereDate('created_at', today())->orWhereNotNull('device_id'))
+                ->latest()->get(),
         ];
     }
 };
@@ -103,18 +109,18 @@ new class extends Component {
         </form>
 
         <section wire:poll.2s class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="mb-4 text-lg font-semibold">Today's active orders</h2>
+            <h2 class="mb-4 text-lg font-semibold">Active orders</h2>
             <div class="space-y-3">
                 @forelse($activeOrders as $order)
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 text-sm">
                         <div><strong>{{ $order->order_number }}</strong><span class="ml-2 text-slate-500">{{ $order->customer_name }} · {{ $order->order_type === 'takeaway' ? 'Takeaway' : 'Table '.$order->table_number }}</span></div>
-                        <span class="capitalize text-blue-700">{{ str_replace('_', ' ', $order->status) }}</span>
+                        <span class="capitalize text-blue-700">{{ match ($order->status) { 'awaiting_inventory' => 'Checking stock', 'awaiting_verification' => 'Waiting for waiter', 'verifying' => 'Waiter verified', 'waiting_payment' => 'Awaiting prepayment', 'awaiting_payment' => 'Awaiting post-meal payment', default => str_replace('_', ' ', $order->status) } }}</span>
                         <span class="font-medium">{{ config('pos.currency') }} {{ number_format($order->total_amount, 0) }}</span>
-                        @if($order->status === 'waiting_payment')<button wire:click="pay({{ $order->id }})" wire:confirm="Record cash payment for this order?" class="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800">Record cash</button>@endif
-                        @if(in_array($order->status, ['awaiting_inventory', 'waiting_payment'], true))<button wire:click="cancel({{ $order->id }})" wire:confirm="Cancel this unpaid order?" class="rounded-lg border border-slate-300 px-3 py-2 text-slate-700 hover:border-red-300 hover:text-red-700">Cancel</button>@endif
+                        @if(in_array($order->status, ['waiting_payment', 'awaiting_payment'], true))<button wire:click="pay({{ $order->id }})" wire:confirm="Record cash payment for this order?" class="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white hover:bg-blue-800">Record cash</button>@endif
+                        @if(in_array($order->status, ['awaiting_inventory', 'waiting_payment', 'awaiting_verification'], true))<button wire:click="cancel({{ $order->id }})" wire:confirm="Cancel this order?" class="rounded-lg border border-slate-300 px-3 py-2 text-slate-700 hover:border-red-300 hover:text-red-700">Cancel</button>@endif
                     </div>
                 @empty
-                    <p class="text-sm text-slate-500">No active orders today.</p>
+                    <p class="text-sm text-slate-500">No active orders.</p>
                 @endforelse
             </div>
         </section>

@@ -16,6 +16,7 @@ final class ExpireUnpaidOrders extends Command
     {
         Order::query()
             ->whereIn('status', ['awaiting_inventory', 'waiting_payment'])
+            ->whereNull('device_id')
             ->where('expires_at', '<=', now())
             ->orderBy('id')
             ->pluck('id')

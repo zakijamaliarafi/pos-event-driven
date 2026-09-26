@@ -13,14 +13,17 @@ final class OrderNotificationConsumer
     public function handle(DomainEvent $event): void
     {
         [$role, $message] = match ($event->name) {
-            'OrderAwaitingPayment' => ['cashier', 'A customer order is ready for cash payment.'],
+            'OrderAwaitingPayment' => ['cashier', 'A cashier sale is ready for cash payment.'],
+            'OrderAwaitingVerification' => ['waiter', 'A customer order is ready for verification.'],
+            'OrderQueuedForKitchen' => ['kitchen', 'A verified order is ready for preparation.'],
+            'OrderServed' => ['cashier', 'A served customer order is ready for cash payment.'],
             'OrderPaid' => ['kitchen', 'A paid order is ready for preparation.'],
             'OrderReady' => ['waiter', 'An order is ready for service.'],
             'InventoryRejected' => ['manager', 'An order was rejected because stock is unavailable.'],
             default => [null, null],
         };
 
-        if ($role === null) {
+        if ($role === null || ($event->name === 'OrderPaid' && ($event->payload['from_status'] ?? null) === 'awaiting_payment')) {
             return;
         }
 
