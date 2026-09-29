@@ -24,8 +24,8 @@ test('security settings page can be rendered', function () {
         ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route('security.edit'))
         ->assertOk()
-        ->assertSee('Two-factor authentication')
-        ->assertSee('Enable 2FA');
+        ->assertSee('Autentikasi dua faktor')
+        ->assertSee('Aktifkan 2FA');
 });
 
 test('security settings page requires password confirmation when enabled', function () {
@@ -46,8 +46,8 @@ test('security settings page renders without two factor when feature is disabled
         ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route('security.edit'))
         ->assertOk()
-        ->assertSee('Update password')
-        ->assertDontSee('Two-factor authentication');
+        ->assertSee('Perbarui kata sandi')
+        ->assertDontSee('Autentikasi dua faktor');
 });
 
 test('two factor authentication disabled when confirmation abandoned between requests', function () {

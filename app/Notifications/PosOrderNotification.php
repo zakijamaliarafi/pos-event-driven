@@ -22,7 +22,7 @@ final class PosOrderNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'POS order '.$this->orderNumber,
+            'title' => __('orders.notifications.title', ['number' => $this->orderNumber]),
             'message' => $this->message,
             'order_id' => $this->orderId,
         ];

@@ -8,7 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Profile settings')] class extends Component {
+new #[Title('Pengaturan profil')] class extends Component {
     use ProfileValidationRules;
 
     public string $name = '';
@@ -98,7 +98,7 @@ new #[Title('Profile settings')] class extends Component {
                         </flux:text>
 
                         @if (session('status') === 'verification-link-sent')
-                            <flux:text class="mt-2 font-medium !dark:text-green-400 !text-green-600">
+                            <flux:text class="mt-2 font-medium !text-pos-link">
                                 {{ __('A new verification link has been sent to your email address.') }}
                             </flux:text>
                         @endif

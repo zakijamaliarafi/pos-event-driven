@@ -11,28 +11,87 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-zinc-50: #fafafa;
-    --color-zinc-100: #f5f5f5;
-    --color-zinc-200: #e5e5e5;
-    --color-zinc-300: #d4d4d4;
-    --color-zinc-400: #a3a3a3;
-    --color-zinc-500: #737373;
-    --color-zinc-600: #525252;
-    --color-zinc-700: #404040;
-    --color-zinc-800: #262626;
-    --color-zinc-900: #171717;
-    --color-zinc-950: #0a0a0a;
+    --color-zinc-50: #fffdf7;
+    --color-zinc-100: #f5f2e8;
+    --color-zinc-200: #e0e4d8;
+    --color-zinc-300: #c5d1c3;
+    --color-zinc-400: #93aa99;
+    --color-zinc-500: #667d6c;
+    --color-zinc-600: #506653;
+    --color-zinc-700: #3a5141;
+    --color-zinc-800: #253d30;
+    --color-zinc-900: #173a2b;
+    --color-zinc-950: #0d241b;
 
-    --color-accent: var(--color-blue-700);
-    --color-accent-content: var(--color-blue-700);
-    --color-accent-foreground: var(--color-white);
+    --color-brand-cream: #fff8e9;
+    --color-brand-green: #0b603f;
+    --color-brand-ink: #173a2b;
+    --color-brand-yellow: #f5e83d;
+
+    --color-pos-canvas: var(--pos-canvas);
+    --color-pos-surface: var(--pos-surface);
+    --color-pos-ink: var(--pos-ink);
+    --color-pos-muted: var(--pos-muted);
+    --color-pos-border: var(--pos-border);
+    --color-pos-border-strong: var(--pos-border-strong);
+    --color-pos-soft: var(--pos-soft);
+    --color-pos-action: var(--pos-action);
+    --color-pos-action-hover: var(--pos-action-hover);
+    --color-pos-action-foreground: var(--pos-action-foreground);
+    --color-pos-link: var(--pos-link);
+    --color-pos-focus: var(--pos-focus);
+    --color-pos-danger: var(--pos-danger);
+    --color-pos-danger-soft: var(--pos-danger-soft);
+    --color-pos-danger-border: var(--pos-danger-border);
+
+    --color-accent: var(--pos-action);
+    --color-accent-content: var(--pos-link);
+    --color-accent-foreground: var(--pos-action-foreground);
+}
+
+:root {
+    color-scheme: light;
+    --pos-canvas: #fff8e9;
+    --pos-surface: #ffffff;
+    --pos-ink: #173a2b;
+    --pos-muted: #586e5e;
+    --pos-border: #dce5d9;
+    --pos-border-strong: #adbfad;
+    --pos-soft: #edf5e8;
+    --pos-action: #0b603f;
+    --pos-action-hover: #084c32;
+    --pos-action-foreground: #ffffff;
+    --pos-link: #0b603f;
+    --pos-focus: #0b603f;
+    --pos-danger: #b52b27;
+    --pos-danger-soft: #fff0eb;
+    --pos-danger-border: #edb9b1;
+}
+
+.dark {
+    color-scheme: dark;
+    --pos-canvas: #0d241b;
+    --pos-surface: #173a2b;
+    --pos-ink: #f6f2e5;
+    --pos-muted: #b6c9ba;
+    --pos-border: #365444;
+    --pos-border-strong: #67836c;
+    --pos-soft: #244b37;
+    --pos-action: #56c58a;
+    --pos-action-hover: #7ce0a7;
+    --pos-action-foreground: #0d241b;
+    --pos-link: #7ce0a7;
+    --pos-focus: #f5e83d;
+    --pos-danger: #ff7870;
+    --pos-danger-soft: #4d2928;
+    --pos-danger-border: #9d504b;
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-blue-300);
-        --color-accent-content: var(--color-blue-300);
-        --color-accent-foreground: var(--color-slate-950);
+        --color-accent: var(--pos-action);
+        --color-accent-content: var(--pos-link);
+        --color-accent-foreground: var(--pos-action-foreground);
     }
 }
 
@@ -43,8 +102,27 @@
     ::before,
     ::backdrop,
     ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
+        border-color: var(--pos-border, currentColor);
     }
+}
+
+body {
+    background: var(--pos-canvas);
+    color: var(--pos-ink);
+}
+
+:is(input, select, textarea):not([data-flux-control], [type='checkbox'], [type='radio'], [type='file']) {
+    background: var(--pos-surface);
+    color: var(--pos-ink);
+}
+
+:is(input, textarea)::placeholder {
+    color: var(--pos-muted);
+}
+
+:is(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--pos-focus);
+    outline-offset: 2px;
 }
 
 [data-flux-field]:not(ui-radio, ui-checkbox) {

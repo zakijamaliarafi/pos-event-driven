@@ -13,20 +13,20 @@ final class CreateStaffUser extends Command
 {
     protected $signature = 'pos:create-staff {email} {name} {role}';
 
-    protected $description = 'Create a POS staff user with an interactively entered password';
+    protected $description = 'Buat akun staf Oemah Tahu Purwokerto dengan kata sandi interaktif';
 
     public function handle(): int
     {
         $role = (string) $this->argument('role');
 
         if (! in_array($role, ['cashier', 'kitchen', 'waiter', 'manager', 'owner'], true) || ! Role::where('name', $role)->exists()) {
-            $this->components->error('Seed roles first, then choose a valid staff role.');
+            $this->components->error(__('staff.seed_roles_first'));
 
             return self::FAILURE;
         }
 
-        $password = $this->secret('Password');
-        $confirmation = $this->secret('Confirm password');
+        $password = $this->secret(__('staff.password'));
+        $confirmation = $this->secret(__('staff.confirm_password'));
 
         $validator = Validator::make([
             'email' => $this->argument('email'),
@@ -53,7 +53,7 @@ final class CreateStaffUser extends Command
             'email_verified_at' => now(),
         ]);
         $user->assignRole($role);
-        $this->components->info("Created {$role} account for {$user->email}.");
+        $this->components->info(__('staff.created', ['role' => __('staff.roles.'.$role), 'email' => $user->email]));
 
         return self::SUCCESS;
     }

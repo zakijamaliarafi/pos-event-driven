@@ -217,9 +217,9 @@ test('only a waiter can verify a customer order from the waiter page', function 
 
     $this->actingAs($cashier)->get(route('waiter.view'))->assertForbidden();
     Livewire::actingAs($waiter)->test('pages::waiter.view')
-        ->assertSee('Awaiting verification')
+        ->assertSee('Menunggu verifikasi')
         ->assertSee($order->order_number)
-        ->assertSee('Reject')
+        ->assertSee('Tolak')
         ->call('verify', $order->id)
         ->assertHasNoErrors();
     expect($order->fresh()->status)->toBe('verifying');
@@ -460,5 +460,5 @@ test('paid and ready orders notify the kitchen and waiter once', function () {
 
     expect($cook->notifications()->count())->toBe(1)
         ->and($waiter->notifications()->count())->toBe(1)
-        ->and($waiter->notifications()->first()->data['title'])->toContain('POS order');
+        ->and($waiter->notifications()->first()->data['title'])->toBe('Pesanan '.$order->order_number);
 });

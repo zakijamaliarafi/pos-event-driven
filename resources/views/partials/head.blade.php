@@ -2,10 +2,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 <title>
-    {{ filled($title ?? null) ? $title.' - '.config('app.name', 'POS') : config('app.name', 'POS') }}
+    {{ filled($title ?? null) ? $title.' - '.config('app.name', 'Oemah Tahu Purwokerto') : config('app.name', 'Oemah Tahu Purwokerto') }}
 </title>
 
-<link rel="icon" href="/pos-logo.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
 <link rel="preconnect" href="https://fonts.bunny.net">

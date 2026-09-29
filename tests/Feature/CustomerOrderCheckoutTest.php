@@ -22,6 +22,7 @@ test('customer order calculates price on the server and emits an outbox event', 
 
     $order = Order::firstOrFail();
     expect($order->total_amount)->toBe('50000.00')
+        ->and($order->order_number)->toMatch('/^OTP-[A-Z0-9]{12}$/')
         ->and($order->status)->toBe('awaiting_inventory')
         ->and($order->expires_at)->toBeNull()
         ->and($order->items()->count())->toBe(1);
@@ -33,7 +34,8 @@ test('customer order rejects an empty cart', function () {
         ->set('tableNumber', 4)
         ->set('customerName', 'Customer')
         ->call('submit')
-        ->assertHasErrors('cart');
+        ->assertHasErrors('cart')
+        ->assertSee('Pilih setidaknya satu produk.');
 
     expect(Order::count())->toBe(0);
 });

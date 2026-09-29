@@ -38,7 +38,7 @@ new class extends Component {
             ->values()->all();
 
         if ($cart === []) {
-            throw ValidationException::withMessages(['cart' => 'Choose at least one product.']);
+            throw ValidationException::withMessages(['cart' => __('orders.errors.empty_cart')]);
         }
 
         $order = $orders->handle([
@@ -50,7 +50,7 @@ new class extends Component {
         ], deviceId: $this->deviceId);
 
         $this->quantities = [];
-        $this->message = "Order {$order->order_number} submitted. A waiter will verify it before preparation. Please pay at the cashier after your meal.";
+        $this->message = __('orders.messages.customer_submitted', ['number' => $order->order_number]);
         $this->dispatch('customer-order-submitted', orderId: $order->id);
     }
 
@@ -58,7 +58,7 @@ new class extends Component {
     {
         Order::query()->whereKey($orderId)->where('device_id', $this->deviceId)->firstOrFail();
         $orders->cancel($orderId);
-        $this->message = 'Order cancelled. Reserved stock will be released shortly.';
+        $this->message = __('orders.messages.customer_cancelled');
     }
 
     public function with(): array
@@ -71,60 +71,60 @@ new class extends Component {
 };
 ?>
 
-<div class="min-h-screen bg-slate-50 text-slate-900">
+<div class="min-h-screen bg-pos-canvas text-pos-ink">
     <x-pos-nav />
     <main class="mx-auto max-w-7xl space-y-8 px-5 py-8">
         <div>
-            <p class="text-sm font-semibold uppercase tracking-widest text-blue-700">Self-service</p>
-            <h1 class="mt-1 text-3xl font-bold">Place an order</h1>
-            <p class="mt-2 text-slate-600">Select products. A waiter will verify your order, and you can pay cash after your meal.</p>
+            <p class="text-sm font-semibold uppercase tracking-widest text-pos-link">Pesan mandiri</p>
+            <h1 class="mt-1 text-3xl font-bold">Buat pesanan</h1>
+            <p class="mt-2 text-pos-muted">Pilih menu. Pramusaji akan memverifikasi pesanan, lalu Anda dapat membayar tunai di kasir setelah makan.</p>
         </div>
 
-        @if($message)<div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-900">{{ $message }}</div>@endif
-        @error('cart')<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{{ $message }}</div>@enderror
-        @error('order')<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{{ $message }}</div>@enderror
+        @if($message)<div class="rounded-xl border border-pos-border bg-pos-soft p-4 text-pos-ink">{{ $message }}</div>@endif
+        @error('cart')<div class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-pos-danger">{{ $message }}</div>@enderror
+        @error('order')<div class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-pos-danger">{{ $message }}</div>@enderror
 
         <form wire:submit="submit" class="grid gap-8 lg:grid-cols-[1fr_20rem]">
             <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 @forelse($products as $product)
-                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm">
                         <div class="flex items-start justify-between gap-3">
                             <h2 class="font-semibold">{{ $product->name }}</h2>
-                            <span class="text-sm font-semibold text-blue-700">{{ config('pos.currency') }} {{ number_format($product->active_price, 0) }}</span>
+                            <span class="text-sm font-semibold text-pos-link">{{ config('pos.currency') }} {{ number_format($product->active_price, 0) }}</span>
                         </div>
-                        <p class="mt-2 text-xs text-slate-500">Available: {{ max(0, $product->current_stock - $product->reserved_stock) }}</p>
-                        <label class="mt-4 block text-sm text-slate-600" for="quantity-{{ $product->id }}">Quantity</label>
-                        <input id="quantity-{{ $product->id }}" type="number" min="0" max="100" wire:model.number="quantities.{{ $product->id }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-600 focus:ring-blue-600">
+                        <p class="mt-2 text-xs text-pos-muted">Tersedia: {{ max(0, $product->current_stock - $product->reserved_stock) }}</p>
+                        <label class="mt-4 block text-sm text-pos-muted" for="quantity-{{ $product->id }}">Jumlah</label>
+                        <input id="quantity-{{ $product->id }}" type="number" min="0" max="100" wire:model.number="quantities.{{ $product->id }}" class="mt-1 w-full rounded-lg border border-pos-border-strong px-3 py-2 focus:border-pos-focus focus:ring-pos-focus">
                     </div>
                 @empty
-                    <p class="text-slate-500">No products are available yet.</p>
+                    <p class="text-pos-muted">Belum ada produk yang tersedia.</p>
                 @endforelse
             </section>
-            <aside class="h-fit space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-semibold">Order details</h2>
-                <label class="block text-sm font-medium">Table number<input type="number" min="1" wire:model="tableNumber" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"></label>
-                @error('table_number')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
-                <label class="block text-sm font-medium">Your name<input type="text" wire:model="customerName" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"></label>
-                @error('customer_name')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
-                <label class="block text-sm font-medium">Phone (optional)<input type="tel" wire:model="customerPhone" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"></label>
-                <button type="submit" class="w-full rounded-lg bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800" wire:loading.attr="disabled">Submit order</button>
+            <aside class="h-fit space-y-4 rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm">
+                <h2 class="text-lg font-semibold">Detail pesanan</h2>
+                <label class="block text-sm font-medium">Nomor meja<input type="number" min="1" wire:model="tableNumber" class="mt-1 w-full rounded-lg border border-pos-border-strong px-3 py-2"></label>
+                @error('table_number')<p class="text-sm text-pos-danger">{{ $message }}</p>@enderror
+                <label class="block text-sm font-medium">Nama Anda<input type="text" wire:model="customerName" class="mt-1 w-full rounded-lg border border-pos-border-strong px-3 py-2"></label>
+                @error('customer_name')<p class="text-sm text-pos-danger">{{ $message }}</p>@enderror
+                <label class="block text-sm font-medium">Nomor telepon (opsional)<input type="tel" wire:model="customerPhone" class="mt-1 w-full rounded-lg border border-pos-border-strong px-3 py-2"></label>
+                <button type="submit" class="w-full rounded-lg bg-pos-action px-4 py-3 font-semibold text-pos-action-foreground hover:bg-pos-action-hover" wire:loading.attr="disabled">Kirim pesanan</button>
             </aside>
         </form>
 
-        <section wire:poll.3s class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="mb-4 text-lg font-semibold">Your recent orders</h2>
+        <section wire:poll.3s class="rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm">
+            <h2 class="mb-4 text-lg font-semibold">Pesanan terbaru Anda</h2>
             <div class="space-y-3">
                 @forelse($orders as $order)
-                    <div data-pos-order-id="{{ $order->id }}" class="flex flex-wrap justify-between gap-2 border-b border-slate-100 pb-3 text-sm">
+                    <div data-pos-order-id="{{ $order->id }}" class="flex flex-wrap justify-between gap-2 border-b border-pos-border pb-3 text-sm">
                         <span class="font-semibold">{{ $order->order_number }}</span>
-                        <span class="capitalize text-blue-700">{{ match ($order->status) { 'awaiting_inventory' => 'Checking stock', 'awaiting_verification' => 'Waiting for waiter', 'verifying' => 'Waiter verified', 'pending' => 'Queued for kitchen', 'awaiting_payment' => 'Please pay at cashier', default => str_replace('_', ' ', $order->status) } }}</span>
+                        <span class="text-pos-link">{{ __('orders.status.'.$order->status) }}</span>
                         <span>{{ config('pos.currency') }} {{ number_format($order->total_amount, 0) }}</span>
                         @if(in_array($order->status, ['awaiting_inventory', 'awaiting_verification'], true))
-                            <button wire:click="cancel({{ $order->id }})" wire:confirm="Cancel this unpaid order?" class="rounded-lg border border-slate-300 px-2 py-1 text-slate-700 hover:border-red-300 hover:text-red-700">Cancel</button>
+                            <button wire:click="cancel({{ $order->id }})" wire:confirm="Batalkan pesanan yang belum dibayar ini?" class="rounded-lg border border-pos-border-strong px-2 py-1 text-pos-ink hover:border-pos-danger-border hover:text-pos-danger">Batalkan</button>
                         @endif
                     </div>
                 @empty
-                    <p class="text-sm text-slate-500">Your orders will appear here.</p>
+                    <p class="text-sm text-pos-muted">Pesanan Anda akan tampil di sini.</p>
                 @endforelse
             </div>
         </section>

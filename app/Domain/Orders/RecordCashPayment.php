@@ -19,7 +19,7 @@ final class RecordCashPayment
 
             if ($existing) {
                 if ($existing->idempotency_key !== $idempotencyKey) {
-                    throw ValidationException::withMessages(['payment' => 'This order has already been paid.']);
+                    throw ValidationException::withMessages(['payment' => __('orders.errors.already_paid')]);
                 }
 
                 return $order;
@@ -29,7 +29,7 @@ final class RecordCashPayment
             $servedCustomerOrder = $order->device_id !== null && $order->status === 'awaiting_payment';
 
             if (! $cashierSale && ! $servedCustomerOrder) {
-                throw ValidationException::withMessages(['payment' => 'This order is not awaiting payment.']);
+                throw ValidationException::withMessages(['payment' => __('orders.errors.not_awaiting_payment')]);
             }
 
             DB::table('cash_payments')->insert([

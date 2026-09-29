@@ -41,7 +41,7 @@ final class SubmitOrder
             $product = $products->get($item['id']);
 
             if (! $product || ! $product->is_available) {
-                throw ValidationException::withMessages(['cart' => 'A selected product is unavailable.']);
+                throw ValidationException::withMessages(['cart' => __('orders.errors.product_unavailable')]);
             }
 
             $price = (float) $product->active_price;
@@ -61,7 +61,7 @@ final class SubmitOrder
 
         return DB::transaction(function () use ($data, $cashierId, $deviceId, $lines, $total): Order {
             $order = Order::create([
-                'order_number' => 'POS-'.Str::upper(Str::random(12)),
+                'order_number' => 'OTP-'.Str::upper(Str::random(12)),
                 'user_id' => $cashierId,
                 'device_id' => $deviceId,
                 'table_number' => $data['order_type'] === 'dine_in' ? $data['table_number'] : null,

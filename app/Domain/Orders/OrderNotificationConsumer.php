@@ -13,13 +13,13 @@ final class OrderNotificationConsumer
     public function handle(DomainEvent $event): void
     {
         [$role, $message] = match ($event->name) {
-            'OrderAwaitingPayment' => ['cashier', 'A cashier sale is ready for cash payment.'],
-            'OrderAwaitingVerification' => ['waiter', 'A customer order is ready for verification.'],
-            'OrderQueuedForKitchen' => ['kitchen', 'A verified order is ready for preparation.'],
-            'OrderServed' => ['cashier', 'A served customer order is ready for cash payment.'],
-            'OrderPaid' => ['kitchen', 'A paid order is ready for preparation.'],
-            'OrderReady' => ['waiter', 'An order is ready for service.'],
-            'InventoryRejected' => ['manager', 'An order was rejected because stock is unavailable.'],
+            'OrderAwaitingPayment' => ['cashier', __('orders.notifications.cashier_payment')],
+            'OrderAwaitingVerification' => ['waiter', __('orders.notifications.waiter_verification')],
+            'OrderQueuedForKitchen' => ['kitchen', __('orders.notifications.kitchen_verified')],
+            'OrderServed' => ['cashier', __('orders.notifications.cashier_after_service')],
+            'OrderPaid' => ['kitchen', __('orders.notifications.kitchen_paid')],
+            'OrderReady' => ['waiter', __('orders.notifications.waiter_ready')],
+            'InventoryRejected' => ['manager', __('orders.notifications.stock_unavailable')],
             default => [null, null],
         };
 

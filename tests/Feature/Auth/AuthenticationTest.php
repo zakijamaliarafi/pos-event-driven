@@ -9,7 +9,9 @@ uses(RefreshDatabase::class);
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
-    $response->assertOk();
+    $response->assertOk()
+        ->assertSee('Oemah Tahu Purwokerto')
+        ->assertSee('Masuk ke akun Anda');
 });
 
 test('users can authenticate using the login screen', function () {
@@ -35,7 +37,7 @@ test('users can not authenticate with invalid password', function () {
         'password' => 'wrong-password',
     ]);
 
-    $response->assertSessionHasErrorsIn('email');
+    $response->assertSessionHasErrors(['email' => 'Email atau kata sandi tidak sesuai.']);
 
     $this->assertGuest();
 });

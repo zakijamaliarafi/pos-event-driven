@@ -37,7 +37,7 @@ final class ManageCatalog
             $category = Category::query()->lockForUpdate()->findOrFail($id);
 
             if ($category->products()->exists()) {
-                throw ValidationException::withMessages(['category' => 'Move or remove products before deleting this category.']);
+                throw ValidationException::withMessages(['category' => __('catalog.errors.category_has_products')]);
             }
 
             $this->events->record($category, 'CategoryDeleted', ['category_id' => $id]);
@@ -93,7 +93,7 @@ final class ManageCatalog
             $product = Product::query()->lockForUpdate()->findOrFail($id);
 
             if ($onHand < $product->reserved_stock) {
-                throw ValidationException::withMessages(['stock' => 'On-hand stock cannot be less than reserved stock.']);
+                throw ValidationException::withMessages(['stock' => __('catalog.errors.stock_below_reserved')]);
             }
 
             $product->current_stock = $onHand;
@@ -117,7 +117,7 @@ final class ManageCatalog
             $ingredient = $id ? InventoryItem::query()->lockForUpdate()->findOrFail($id) : new InventoryItem;
 
             if ($id && $data['current_stock'] < (float) $ingredient->reserved_stock) {
-                throw ValidationException::withMessages(['current_stock' => 'Stock cannot be less than reserved stock.']);
+                throw ValidationException::withMessages(['current_stock' => __('catalog.errors.stock_below_reserved')]);
             }
 
             $ingredient->fill($data);
@@ -134,7 +134,7 @@ final class ManageCatalog
             $ingredient = InventoryItem::query()->lockForUpdate()->findOrFail($id);
 
             if ($ingredient->recipes()->exists() || (float) $ingredient->reserved_stock > 0) {
-                throw ValidationException::withMessages(['ingredient' => 'Remove recipes and reservations before deleting this ingredient.']);
+                throw ValidationException::withMessages(['ingredient' => __('catalog.errors.ingredient_has_recipes')]);
             }
 
             $this->events->record($ingredient, 'IngredientDeleted', ['ingredient_id' => $id]);

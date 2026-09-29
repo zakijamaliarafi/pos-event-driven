@@ -22,7 +22,7 @@ final class TransitionOrder
             $order = Order::query()->lockForUpdate()->findOrFail($orderId);
 
             if ($order->status !== 'preparing' || DB::table('stock_reservations')->where('order_id', $orderId)->where('status', 'reserved')->exists()) {
-                throw ValidationException::withMessages(['order' => 'Preparation or stock consumption is still pending.']);
+                throw ValidationException::withMessages(['order' => __('orders.errors.preparation_pending')]);
             }
 
             $order->status = 'ready';
@@ -38,7 +38,7 @@ final class TransitionOrder
             $order = Order::query()->lockForUpdate()->findOrFail($orderId);
 
             if ($order->status !== 'ready') {
-                throw ValidationException::withMessages(['order' => 'Only ready orders can be served.']);
+                throw ValidationException::withMessages(['order' => __('orders.errors.not_ready_to_serve')]);
             }
 
             $isPaid = DB::table('cash_payments')->where('order_id', $orderId)->exists();
@@ -55,7 +55,7 @@ final class TransitionOrder
             $order = Order::query()->lockForUpdate()->findOrFail($orderId);
 
             if ($order->device_id === null || $order->status !== 'awaiting_verification' || ! DB::table('stock_reservations')->where('order_id', $orderId)->where('status', 'reserved')->exists()) {
-                throw ValidationException::withMessages(['order' => 'This customer order is not ready for verification.']);
+                throw ValidationException::withMessages(['order' => __('orders.errors.not_ready_to_verify')]);
             }
 
             $order->status = 'verifying';
@@ -71,7 +71,7 @@ final class TransitionOrder
             $order = Order::query()->lockForUpdate()->findOrFail($orderId);
 
             if ($order->device_id === null || $order->status !== 'awaiting_verification') {
-                throw ValidationException::withMessages(['order' => 'This customer order can no longer be rejected.']);
+                throw ValidationException::withMessages(['order' => __('orders.errors.cannot_reject')]);
             }
 
             $order->status = 'rejected';
@@ -91,7 +91,7 @@ final class TransitionOrder
                 : in_array($order->status, ['awaiting_inventory', 'awaiting_verification'], true);
 
             if (! $cancellable || DB::table('cash_payments')->where('order_id', $orderId)->exists()) {
-                throw ValidationException::withMessages(['order' => 'This order can no longer be cancelled.']);
+                throw ValidationException::withMessages(['order' => __('orders.errors.cannot_cancel')]);
             }
 
             $order->status = 'cancelled';
@@ -146,7 +146,10 @@ final class TransitionOrder
             $order = Order::query()->lockForUpdate()->findOrFail($orderId);
 
             if ($order->status !== $from) {
-                throw ValidationException::withMessages(['order' => "Only {$from} orders can move to {$to}."]);
+                throw ValidationException::withMessages(['order' => __('orders.errors.invalid_transition', [
+                    'from' => __('orders.status.'.$from),
+                    'to' => __('orders.status.'.$to),
+                ])]);
             }
 
             $order->status = $to;

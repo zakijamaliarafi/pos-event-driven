@@ -7,7 +7,12 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 test('customer ordering page is public', function () {
-    $this->get(route('customer.order'))->assertOk()->assertSee('Place an order');
+    $this->get(route('customer.order'))
+        ->assertOk()
+        ->assertSee('Oemah Tahu Purwokerto')
+        ->assertSee('Buat pesanan')
+        ->assertSee('Kirim pesanan')
+        ->assertSee('Tampilan');
 });
 
 test('each staff role can render its POS page', function (string $role, string $route) {
@@ -15,7 +20,9 @@ test('each staff role can render its POS page', function (string $role, string $
     $user = User::factory()->create();
     $user->assignRole($role);
 
-    $this->actingAs($user)->get(route($route))->assertOk();
+    $this->actingAs($user)->get(route($route))
+        ->assertOk()
+        ->assertSee('Oemah Tahu Purwokerto');
 })->with([
     ['cashier', 'order.create'],
     ['manager', 'menu.menu'],
@@ -31,4 +38,15 @@ test('cashier cannot edit the catalog', function () {
     $user->assignRole('cashier');
 
     $this->actingAs($user)->get(route('menu.menu'))->assertForbidden();
+});
+
+test('staff appearance page uses Indonesian labels and the shared brand', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get(route('appearance.edit'))
+        ->assertOk()
+        ->assertSee('Oemah Tahu Purwokerto')
+        ->assertSee('Terang')
+        ->assertSee('Gelap')
+        ->assertSee('Sistem');
 });
