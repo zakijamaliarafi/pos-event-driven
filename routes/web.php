@@ -21,10 +21,6 @@ Route::get('/', function () {
     if ($user->hasRole('waiter')) {
         return redirect('/waiter');
     }
-
-    if ($user->hasRole('owner')) {
-        return redirect('/dashboard');
-    }
 })->middleware('auth')->name('home');
 
 Route::middleware(['auth', 'role:cashier'])->group(function () {
@@ -48,7 +44,7 @@ Route::middleware(['auth', 'role:waiter'])->group(function () {
     Route::livewire('/waiter', 'pages::waiter.view')->name('waiter.view');
 });
 
-Route::middleware(['auth', 'role:owner||manager'])->group(function () {
+Route::middleware(['auth', 'role:manager'])->group(function () {
     Route::livewire('/dashboard', 'pages::dashboard.revenue')->name('dashboard.revenue');
 });
 

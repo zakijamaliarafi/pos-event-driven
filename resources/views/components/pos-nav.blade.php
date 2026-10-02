@@ -15,7 +15,6 @@
                 @endif
                 @if(auth()->user()->hasRole('kitchen')) <a class="hover:text-pos-link" href="{{ route('kitchen.view') }}">Dapur</a> @endif
                 @if(auth()->user()->hasRole('waiter')) <a class="hover:text-pos-link" href="{{ route('waiter.view') }}">Pramusaji</a> @endif
-                @if(auth()->user()->hasRole('owner')) <a class="hover:text-pos-link" href="{{ route('dashboard.revenue') }}">Dasbor</a> @endif
             @endauth
             <a class="hover:text-pos-link" href="{{ route('customer.order') }}">Pesan sebagai pelanggan</a>
         </nav>

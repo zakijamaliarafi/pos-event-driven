@@ -10,18 +10,21 @@ test('guests are redirected from the dashboard to login', function () {
     $this->get(route('dashboard.revenue'))->assertRedirect(route('login'));
 });
 
-test('owner can open the sales dashboard', function () {
-    Role::findOrCreate('owner', 'web');
+test('manager can open the sales dashboard', function () {
+    Role::findOrCreate('manager', 'web');
     $user = User::factory()->create();
-    $user->assignRole('owner');
+    $user->assignRole('manager');
 
     $this->actingAs($user)->get(route('dashboard.revenue'))->assertOk();
 });
 
-test('cashier cannot open the owner and manager dashboard', function () {
-    Role::findOrCreate('cashier', 'web');
+test('other staff and users without a role cannot open the manager dashboard', function (?string $role) {
     $user = User::factory()->create();
-    $user->assignRole('cashier');
+
+    if ($role !== null) {
+        Role::findOrCreate($role, 'web');
+        $user->assignRole($role);
+    }
 
     $this->actingAs($user)->get(route('dashboard.revenue'))->assertForbidden();
-});
+})->with(['cashier', 'kitchen', 'waiter', null]);

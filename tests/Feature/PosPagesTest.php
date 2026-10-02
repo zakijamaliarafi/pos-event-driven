@@ -29,8 +29,31 @@ test('each staff role can render its POS page', function (string $role, string $
     ['manager', 'menu.recipes'],
     ['kitchen', 'kitchen.view'],
     ['waiter', 'waiter.view'],
-    ['owner', 'dashboard.revenue'],
+    ['manager', 'dashboard.revenue'],
 ]);
+
+test('staff are redirected to their role landing page', function (string $role, string $route) {
+    Role::findOrCreate($role, 'web');
+    $user = User::factory()->create();
+    $user->assignRole($role);
+
+    $this->actingAs($user)->get(route('home'))->assertRedirect(route($route));
+})->with([
+    ['cashier', 'order.create'],
+    ['manager', 'menu.menu'],
+    ['kitchen', 'kitchen.view'],
+    ['waiter', 'waiter.view'],
+]);
+
+test('manager navigation includes the dashboard link', function () {
+    Role::findOrCreate('manager', 'web');
+    $user = User::factory()->create();
+    $user->assignRole('manager');
+
+    $this->actingAs($user)->get(route('menu.menu'))
+        ->assertOk()
+        ->assertSee('href="'.route('dashboard.revenue').'"', false);
+});
 
 test('cashier cannot edit the catalog', function () {
     Role::findOrCreate('cashier', 'web');

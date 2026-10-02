@@ -10,6 +10,5 @@ return [
         'kitchen' => 'dapur',
         'waiter' => 'pramusaji',
         'manager' => 'manajer',
-        'owner' => 'pemilik',
     ],
 ];

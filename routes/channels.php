@@ -8,7 +8,7 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('staff.orders', function ($user): bool {
-    return $user->hasAnyRole(['cashier', 'manager', 'kitchen', 'waiter', 'owner']);
+    return $user->hasAnyRole(['cashier', 'manager', 'kitchen', 'waiter']);
 });
 
 Broadcast::channel('customer.order.{orderId}', function ($device, int $orderId): bool {

@@ -18,7 +18,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'kitchen' => ['access kitchen display'],
             'waiter' => ['receive waiter notifications'],
             'manager' => ['manage inventory', 'view revenue dashboard'],
-            'owner' => ['view revenue dashboard'],
         ];
 
         foreach ($permissions as $roleName => $names) {

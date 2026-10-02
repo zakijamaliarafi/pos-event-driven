@@ -19,7 +19,7 @@ final class CreateStaffUser extends Command
     {
         $role = (string) $this->argument('role');
 
-        if (! in_array($role, ['cashier', 'kitchen', 'waiter', 'manager', 'owner'], true) || ! Role::where('name', $role)->exists()) {
+        if (! in_array($role, ['cashier', 'kitchen', 'waiter', 'manager'], true) || ! Role::where('name', $role)->exists()) {
             $this->components->error(__('staff.seed_roles_first'));
 
             return self::FAILURE;

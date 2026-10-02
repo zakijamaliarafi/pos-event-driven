@@ -16,17 +16,17 @@ beforeEach(function () {
     require base_path('routes/channels.php');
 });
 
-test('only staff roles can subscribe to staff order updates', function () {
-    Role::findOrCreate('cashier', 'web');
+test('only staff roles can subscribe to staff order updates', function (string $role) {
+    Role::findOrCreate($role, 'web');
     $staff = User::factory()->create();
-    $staff->assignRole('cashier');
+    $staff->assignRole($role);
     $other = User::factory()->create();
     $request = ['socket_id' => '123.456', 'channel_name' => 'private-staff.orders'];
 
     $this->post('/broadcasting/auth', $request)->assertForbidden();
     $this->actingAs($other)->post('/broadcasting/auth', $request)->assertForbidden();
     $this->actingAs($staff)->post('/broadcasting/auth', $request)->assertOk();
-});
+})->with(['cashier', 'manager', 'kitchen', 'waiter']);
 
 test('customer private channels are limited to orders from their device cookie', function () {
     $product = Product::factory()->withStock(2)->create();
