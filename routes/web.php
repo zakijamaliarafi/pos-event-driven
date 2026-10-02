@@ -11,7 +11,7 @@ Route::get('/', function () {
     }
 
     if ($user->hasRole('manager')) {
-        return redirect('/menu');
+        return redirect()->route('dashboard.revenue');
     }
 
     if ($user->hasRole('kitchen')) {

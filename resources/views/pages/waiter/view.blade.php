@@ -52,7 +52,7 @@ new class extends Component {
         <div><p class="text-sm font-semibold uppercase tracking-widest text-pos-link">Layanan</p><h1 class="mt-1 text-3xl font-bold">Pesanan pramusaji</h1></div>
         @if($message)<div class="rounded-xl border border-pos-border bg-pos-soft p-4 text-pos-ink">{{ $message }}</div>@endif
         @error('order')<div class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-pos-danger">{{ $message }}</div>@enderror
-        <section wire:poll.2s>
+        <section>
             <h2 class="mb-4 text-xl font-semibold">Menunggu verifikasi</h2>
             <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             @forelse($verificationOrders as $order)
@@ -67,7 +67,7 @@ new class extends Component {
             @endforelse
             </div>
         </section>
-        <section wire:poll.2s>
+        <section>
             <h2 class="mb-4 text-xl font-semibold">Siap disajikan</h2>
             <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             @forelse($readyOrders as $order)

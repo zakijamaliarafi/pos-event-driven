@@ -108,7 +108,7 @@ new class extends Component {
             </aside>
         </form>
 
-        <section wire:poll.2s class="rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm">
+        <section class="rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm">
             <h2 class="mb-4 text-lg font-semibold">Pesanan aktif</h2>
             <div class="space-y-3">
                 @forelse($activeOrders as $order)

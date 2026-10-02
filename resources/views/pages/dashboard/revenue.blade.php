@@ -44,7 +44,7 @@ new class extends Component {
             <div><p class="text-sm font-semibold uppercase tracking-widest text-pos-link">Laporan</p><h1 class="mt-1 text-3xl font-bold">Dasbor penjualan</h1></div>
             <label class="text-sm font-medium text-pos-muted">Periode<select wire:model.live="range" class="ml-2 rounded-lg border border-pos-border-strong px-3 py-2 text-pos-ink"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month">Bulan ini</option></select></label>
         </div>
-        <div wire:poll.10s class="grid gap-5 md:grid-cols-3">
+        <div class="grid gap-5 md:grid-cols-3">
             <div class="rounded-2xl border border-pos-border bg-pos-surface p-6 shadow-sm"><p class="text-sm text-pos-muted">Pendapatan tunai</p><p class="mt-3 text-3xl font-bold text-pos-link">{{ config('pos.currency') }} {{ number_format($revenue, 0) }}</p></div>
             <div class="rounded-2xl border border-pos-border bg-pos-surface p-6 shadow-sm"><p class="text-sm text-pos-muted">Pesanan dibayar</p><p class="mt-3 text-3xl font-bold">{{ number_format($orderCount) }}</p></div>
             <div class="rounded-2xl border border-pos-border bg-pos-surface p-6 shadow-sm"><p class="text-sm text-pos-muted">Siap disajikan</p><p class="mt-3 text-3xl font-bold">{{ number_format($readyCount) }}</p></div>

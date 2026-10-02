@@ -220,12 +220,14 @@ new class extends Component {
 <div class="min-h-screen bg-pos-canvas text-pos-ink">
     <x-pos-nav />
     <main class="mx-auto max-w-7xl space-y-7 px-5 py-8">
-        <div><p class="text-sm font-semibold uppercase tracking-widest text-pos-link">Pengelolaan</p><h1 class="mt-1 text-3xl font-bold">Katalog dan stok</h1></div>
-        <nav class="flex flex-wrap gap-2 text-sm font-semibold">
-            @foreach(['products' => 'menu.menu', 'categories' => 'menu.category', 'inventory' => 'menu.inventory', 'ingredients' => 'menu.ingredient', 'recipes' => 'menu.recipes', 'discounts' => 'menu.discount'] as $label => $route)
-                <a href="{{ route($route) }}" class="rounded-lg px-4 py-2 {{ $section === $label ? 'bg-pos-action text-pos-action-foreground' : 'border border-pos-border-strong bg-pos-surface text-pos-muted hover:bg-pos-soft' }}">{{ __('catalog.sections.'.$label) }}</a>
-            @endforeach
-        </nav>
+        <h1 class="text-3xl font-bold">{{ match ($section) {
+            'categories' => 'Kelola Kategori',
+            'inventory' => 'Kelola Stok',
+            'ingredients' => 'Kelola Bahan',
+            'recipes' => 'Kelola Resep',
+            'discounts' => 'Kelola Diskon',
+            default => 'Kelola Produk',
+        } }}</h1>
         @if(session('message'))<div class="rounded-xl border border-pos-border bg-pos-soft p-4 text-pos-ink">{{ session('message') }}</div>@endif
         @if($errors->any())<div class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-pos-danger">{{ $errors->first() }}</div>@endif
 

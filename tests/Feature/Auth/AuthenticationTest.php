@@ -3,6 +3,7 @@
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -27,6 +28,21 @@ test('users can authenticate using the login screen', function () {
         ->assertRedirect(route('home', absolute: false));
 
     $this->assertAuthenticated();
+});
+
+test('manager login leads to the dashboard', function () {
+    Role::findOrCreate('manager', 'web');
+    $user = User::factory()->create();
+    $user->assignRole('manager');
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('home', absolute: false));
+
+    $this->assertAuthenticatedAs($user);
+    $this->get(route('home'))->assertRedirect(route('dashboard.revenue'));
+    $this->get(route('dashboard.revenue'))->assertOk();
 });
 
 test('users can not authenticate with invalid password', function () {

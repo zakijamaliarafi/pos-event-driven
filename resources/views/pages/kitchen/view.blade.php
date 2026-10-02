@@ -39,7 +39,7 @@ new class extends Component {
         <div><p class="text-sm font-semibold uppercase tracking-widest text-pos-link">Layanan</p><h1 class="mt-1 text-3xl font-bold">Antrean dapur</h1></div>
         @if($message)<div class="rounded-xl border border-pos-border bg-pos-soft p-4 text-pos-ink">{{ $message }}</div>@endif
         @error('order')<div class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-pos-danger">{{ $message }}</div>@enderror
-        <div wire:poll.2s class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             @forelse($orders as $order)
                 <article class="rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm">
                     <div class="flex items-start justify-between gap-3"><div><h2 class="font-bold">{{ $order->order_number }}</h2><p class="text-sm text-pos-muted">{{ $order->order_type === 'takeaway' ? __('orders.type.takeaway') : 'Meja '.$order->table_number }}</p></div><span class="rounded-full bg-pos-soft px-3 py-1 text-xs font-semibold text-pos-link">{{ __('orders.status.'.$order->status) }}</span></div>
