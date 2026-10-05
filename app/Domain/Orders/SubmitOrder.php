@@ -2,6 +2,7 @@
 
 namespace App\Domain\Orders;
 
+use App\Domain\Catalog\ProductAvailability;
 use App\Domain\Events\RecordDomainEvent;
 use App\Models\Order;
 use App\Models\Product;
@@ -12,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 final class SubmitOrder
 {
-    public function __construct(private RecordDomainEvent $events) {}
+    public function __construct(private RecordDomainEvent $events, private ProductAvailability $availability) {}
 
     /** @param array<string, mixed> $input */
     public function handle(array $input, ?int $cashierId = null, ?string $deviceId = null): Order
@@ -29,7 +30,7 @@ final class SubmitOrder
 
         $productIds = collect($data['cart'])->pluck('id');
         $products = Product::query()
-            ->with(['discounts', 'recipes'])
+            ->with(['discounts', 'recipes.inventoryItem'])
             ->whereIn('id', $productIds)
             ->get()
             ->keyBy('id');
@@ -40,7 +41,7 @@ final class SubmitOrder
         foreach ($data['cart'] as $item) {
             $product = $products->get($item['id']);
 
-            if (! $product || ! $product->is_available) {
+            if (! $product || ! $this->availability->hasValidRecipe($product)) {
                 throw ValidationException::withMessages(['cart' => __('orders.errors.product_unavailable')]);
             }
 

@@ -11,7 +11,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 test('customer order calculates price on the server and emits an outbox event', function () {
-    $product = Product::factory()->withStock(5)->create(['price' => 25000]);
+    $product = Product::factory()->withRecipe(5)->create(['price' => 25000]);
 
     Livewire::test('pages::customer.order')
         ->set('tableNumber', 4)
@@ -41,7 +41,7 @@ test('customer order rejects an empty cart', function () {
 });
 
 test('customer cannot cancel an order from another device', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
@@ -56,7 +56,7 @@ test('customer cannot cancel an order from another device', function () {
 });
 
 test('customer can cancel their own unpaid order', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
     $deviceId = (string) Str::uuid();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',

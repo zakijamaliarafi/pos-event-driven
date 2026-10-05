@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Catalog\ProductAvailability;
 use App\Domain\Orders\SubmitOrder;
 use App\Domain\Orders\TransitionOrder;
 use App\Models\Order;
@@ -61,10 +62,14 @@ new class extends Component {
         $this->message = __('orders.messages.customer_cancelled');
     }
 
-    public function with(): array
+    public function with(ProductAvailability $availability): array
     {
+        $products = Product::with(['discounts', 'recipes.inventoryItem'])->orderBy('name')->get();
+        $availableQuantities = $products->mapWithKeys(fn (Product $product): array => [$product->id => $availability->availableQuantity($product)]);
+
         return [
-            'products' => Product::query()->with('discounts')->where('is_available', true)->orderBy('name')->get(),
+            'products' => $products->filter(fn (Product $product): bool => $availableQuantities[$product->id] > 0),
+            'availableQuantities' => $availableQuantities,
             'orders' => Order::query()->where('device_id', $this->deviceId)->latest()->limit(10)->get(),
         ];
     }
@@ -92,7 +97,7 @@ new class extends Component {
                             <h2 class="font-semibold">{{ $product->name }}</h2>
                             <span class="text-sm font-semibold text-pos-link">{{ config('pos.currency') }} {{ number_format($product->active_price, 0) }}</span>
                         </div>
-                        <p class="mt-2 text-xs text-pos-muted">Tersedia: {{ max(0, $product->current_stock - $product->reserved_stock) }}</p>
+                        <p class="mt-2 text-xs text-pos-muted">Tersedia: {{ $availableQuantities[$product->id] }}</p>
                         <label class="mt-4 block text-sm text-pos-muted" for="quantity-{{ $product->id }}">Jumlah</label>
                         <input id="quantity-{{ $product->id }}" type="number" min="0" max="100" wire:model.number="quantities.{{ $product->id }}" class="mt-1 w-full rounded-lg border border-pos-border-strong px-3 py-2 focus:border-pos-focus focus:ring-pos-focus">
                     </div>

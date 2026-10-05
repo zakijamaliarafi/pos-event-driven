@@ -86,9 +86,9 @@ test('manager pages use distinct headings and navigation only in the header', fu
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
     $links = $xpath->query('//header/nav/a | //header//nav/a');
-    $expectedRoutes = ['dashboard.revenue', 'menu.menu', 'menu.category', 'menu.inventory', 'menu.ingredient', 'menu.recipes', 'menu.discount'];
+    $expectedRoutes = ['dashboard.revenue', 'menu.menu', 'menu.category', 'menu.ingredient', 'menu.recipes', 'menu.discount'];
 
-    expect(iterator_to_array($links))->toHaveCount(7);
+    expect(iterator_to_array($links))->toHaveCount(6);
 
     foreach ($expectedRoutes as $index => $expectedRoute) {
         expect($links->item($index)->getAttribute('href'))->toBe(route($expectedRoute));
@@ -97,12 +97,12 @@ test('manager pages use distinct headings and navigation only in the header', fu
     $activeLinks = $xpath->query('//header//nav/a[@aria-current="page"]');
     expect($activeLinks->length)->toBe(1)
         ->and($activeLinks->item(0)->getAttribute('href'))->toBe(route($route))
-        ->and($xpath->query('//main//nav')->length)->toBe(0)
-        ->and($xpath->query('//main/h1')->item(0)->textContent)->toBe($heading);
+        ->and($xpath->query('//main//nav[not(starts-with(@aria-label, "Halaman "))]')->length)->toBe(0)
+        ->and($xpath->query('//main//h1')->length)->toBe(1)
+        ->and($xpath->query('//main//h1')->item(0)->textContent)->toBe($heading);
 })->with([
     ['menu.menu', 'Kelola Produk'],
     ['menu.category', 'Kelola Kategori'],
-    ['menu.inventory', 'Kelola Stok'],
     ['menu.ingredient', 'Kelola Bahan'],
     ['menu.recipes', 'Kelola Resep'],
     ['menu.discount', 'Kelola Diskon'],
@@ -115,7 +115,7 @@ test('other staff roles do not see manager navigation', function (string $role, 
 
     $response = $this->actingAs($user)->get(route($route))->assertOk();
 
-    foreach (['menu.menu', 'menu.category', 'menu.inventory', 'menu.ingredient', 'menu.recipes', 'menu.discount', 'dashboard.revenue'] as $managerRoute) {
+    foreach (['menu.menu', 'menu.category', 'menu.ingredient', 'menu.recipes', 'menu.discount', 'dashboard.revenue'] as $managerRoute) {
         $response->assertDontSee('href="'.route($managerRoute).'"', false);
     }
 })->with([
@@ -285,6 +285,15 @@ test('catalog navigation stays active after saving a category', function () {
     $document = new DOMDocument;
     @$document->loadHTML($page->getContent());
     $snapshot = (new DOMXPath($document))->query('//*[@*[name()="wire:snapshot"]]')->item(0)->getAttribute('wire:snapshot');
+
+    $opened = $this->withHeaders(['X-Livewire' => ''])->postJson(Livewire::getUpdateUri(), [
+        'components' => [[
+            'snapshot' => $snapshot,
+            'updates' => [],
+            'calls' => [['path' => '', 'method' => 'createCategory', 'params' => []]],
+        ]],
+    ])->assertOk();
+    $snapshot = $opened->json('components.0.snapshot');
 
     $response = $this->withHeaders(['X-Livewire' => ''])->postJson(Livewire::getUpdateUri(), [
         'components' => [[

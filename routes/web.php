@@ -31,7 +31,6 @@ Route::middleware(['auth', 'role:manager'])->group(function () {
     Route::livewire('/ingredient', 'pages::menu.manage')->name('menu.ingredient');
     Route::livewire('/menu', 'pages::menu.manage')->name('menu.menu');
     Route::livewire('/menu/categories', 'pages::menu.manage')->name('menu.category');
-    Route::livewire('/menu/inventory', 'pages::menu.manage')->name('menu.inventory');
     Route::livewire('/menu/discounts', 'pages::menu.manage')->name('menu.discount');
     Route::livewire('/menu/recipes', 'pages::menu.manage')->name('menu.recipes');
 });

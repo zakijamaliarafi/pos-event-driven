@@ -35,8 +35,8 @@ function drainDomainEvents(): void
     throw new RuntimeException('The domain event queue did not drain.');
 }
 
-test('cashier sale reserves product and recipe stock then consumes it once on preparation', function () {
-    $product = Product::factory()->withStock(5)->create(['price' => 25000]);
+test('cashier sale reserves only recipe ingredient stock then consumes it once on preparation', function () {
+    $product = Product::factory()->create(['price' => 25000]);
     $ingredient = InventoryItem::create(['name' => 'Base', 'unit' => 'g', 'current_stock' => 10, 'low_stock_threshold' => 2]);
     Recipe::create(['product_id' => $product->id, 'inventory_item_id' => $ingredient->id, 'quantity_required' => 1.5]);
     $cashier = User::factory()->create();
@@ -51,7 +51,7 @@ test('cashier sale reserves product and recipe stock then consumes it once on pr
     expect($order->status)->toBe('awaiting_inventory');
     drainDomainEvents();
     expect($order->fresh()->status)->toBe('waiting_payment')
-        ->and($product->fresh()->reserved_stock)->toBe(2)
+        ->and($product->fresh()->reserved_stock)->toBe(0)
         ->and($ingredient->fresh()->reserved_stock)->toBe('3.00');
 
     app(RecordCashPayment::class)->handle($order->id, $cashier->id, (string) Str::uuid());
@@ -60,7 +60,7 @@ test('cashier sale reserves product and recipe stock then consumes it once on pr
 
     app(TransitionOrder::class)->startPreparation($order->id);
     drainDomainEvents();
-    expect($product->fresh()->current_stock)->toBe(3)
+    expect($product->fresh()->current_stock)->toBe(0)
         ->and($product->fresh()->reserved_stock)->toBe(0)
         ->and($ingredient->fresh()->current_stock)->toBe('7.00')
         ->and($ingredient->fresh()->reserved_stock)->toBe('0.00');
@@ -73,7 +73,7 @@ test('cashier sale reserves product and recipe stock then consumes it once on pr
 });
 
 test('customer order reaches the kitchen only after waiter verification consumes its stock and completes after service and payment', function () {
-    $product = Product::factory()->withStock(5)->create(['price' => 25000]);
+    $product = Product::factory()->create(['price' => 25000]);
     $ingredient = InventoryItem::create(['name' => 'Base', 'unit' => 'g', 'current_stock' => 10, 'low_stock_threshold' => 2]);
     Recipe::create(['product_id' => $product->id, 'inventory_item_id' => $ingredient->id, 'quantity_required' => 1.5]);
     $cashier = User::factory()->create();
@@ -87,7 +87,7 @@ test('customer order reaches the kitchen only after waiter verification consumes
     expect($order->expires_at)->toBeNull();
     drainDomainEvents();
     expect($order->fresh()->status)->toBe('awaiting_verification')
-        ->and($product->fresh()->reserved_stock)->toBe(2)
+        ->and($product->fresh()->reserved_stock)->toBe(0)
         ->and($ingredient->fresh()->reserved_stock)->toBe('3.00')
         ->and(DB::table('order_read_models')->where('order_id', $order->id)->value('status'))->toBe('awaiting_verification');
 
@@ -98,14 +98,14 @@ test('customer order reaches the kitchen only after waiter verification consumes
     expect($order->fresh()->status)->toBe('verifying');
     drainDomainEvents();
     expect($order->fresh()->status)->toBe('pending')
-        ->and($product->fresh()->current_stock)->toBe(3)
+        ->and($product->fresh()->current_stock)->toBe(0)
         ->and($product->fresh()->reserved_stock)->toBe(0)
         ->and($ingredient->fresh()->current_stock)->toBe('7.00')
         ->and($ingredient->fresh()->reserved_stock)->toBe('0.00');
 
     app(TransitionOrder::class)->startPreparation($order->id);
     drainDomainEvents();
-    expect($product->fresh()->current_stock)->toBe(3)
+    expect($product->fresh()->current_stock)->toBe(0)
         ->and($ingredient->fresh()->current_stock)->toBe('7.00');
 
     app(TransitionOrder::class)->markReady($order->id);
@@ -123,7 +123,8 @@ test('customer order reaches the kitchen only after waiter verification consumes
 });
 
 test('waiter rejection releases customer reservations and prevents verification', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in',
         'table_number' => 1,
@@ -137,13 +138,14 @@ test('waiter rejection releases customer reservations and prevents verification'
     drainDomainEvents();
 
     expect($order->fresh()->status)->toBe('rejected')
-        ->and($product->fresh()->current_stock)->toBe(1)
-        ->and($product->fresh()->reserved_stock)->toBe(0);
+        ->and($ingredient->fresh()->current_stock)->toBe('1.00')
+        ->and($ingredient->fresh()->reserved_stock)->toBe('0.00');
     expect(fn () => app(TransitionOrder::class)->verify($order->id))->toThrow(ValidationException::class);
 });
 
 test('customer cancellation before verification releases reserved stock once', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
@@ -155,8 +157,8 @@ test('customer cancellation before verification releases reserved stock once', f
     drainDomainEvents();
 
     expect($order->fresh()->status)->toBe('cancelled')
-        ->and($product->fresh()->current_stock)->toBe(1)
-        ->and($product->fresh()->reserved_stock)->toBe(0);
+        ->and($ingredient->fresh()->current_stock)->toBe('1.00')
+        ->and($ingredient->fresh()->reserved_stock)->toBe('0.00');
     expect(fn () => app(TransitionOrder::class)->verify($order->id))->toThrow(ValidationException::class);
 });
 
@@ -170,7 +172,8 @@ test('customer handoffs notify waiter kitchen and cashier once each', function (
     $cook->assignRole('kitchen');
     $cashier = User::factory()->create();
     $cashier->assignRole('cashier');
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
@@ -185,7 +188,7 @@ test('customer handoffs notify waiter kitchen and cashier once each', function (
     drainDomainEvents();
     app(ProcessDomainEvent::class)->process($verifiedId);
     expect($cook->notifications()->count())->toBe(1)
-        ->and($product->fresh()->current_stock)->toBe(0);
+        ->and($ingredient->fresh()->current_stock)->toBe('0.00');
 
     app(TransitionOrder::class)->startPreparation($order->id);
     drainDomainEvents();
@@ -208,7 +211,7 @@ test('only a waiter can verify a customer order from the waiter page', function 
     $waiter->assignRole('waiter');
     $cashier = User::factory()->create();
     $cashier->assignRole('cashier');
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
@@ -228,7 +231,7 @@ test('only a waiter can verify a customer order from the waiter page', function 
 });
 
 test('backfill moves legacy unpaid customer orders to verification once and clears their deadlines', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
@@ -248,7 +251,7 @@ test('backfill moves legacy unpaid customer orders to verification once and clea
 });
 
 test('backfill clears a legacy customer deadline while stock is pending only once', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
@@ -267,7 +270,7 @@ test('backfill clears a legacy customer deadline while stock is pending only onc
 });
 
 test('unpaid customer orders do not expire while cashier sales still do', function () {
-    $product = Product::factory()->withStock(2)->create();
+    $product = Product::factory()->withRecipe(2)->create();
     $input = ['order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer', 'cart' => [['id' => $product->id, 'qty' => 1]]];
     $customerOrder = app(SubmitOrder::class)->handle($input, deviceId: (string) Str::uuid());
     $cashierOrder = app(SubmitOrder::class)->handle($input);
@@ -284,7 +287,8 @@ test('unpaid customer orders do not expire while cashier sales still do', functi
 });
 
 test('duplicate delivery does not reserve stock twice', function () {
-    $product = Product::factory()->withStock(2)->create();
+    $product = Product::factory()->withRecipe(2)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
@@ -295,12 +299,13 @@ test('duplicate delivery does not reserve stock twice', function () {
     app(ProcessDomainEvent::class)->process($eventId);
     app(ProcessDomainEvent::class)->process($eventId);
 
-    expect($product->fresh()->reserved_stock)->toBe(1)
+    expect($ingredient->fresh()->reserved_stock)->toBe('1.00')
         ->and(DB::table('stock_reservations')->where('order_id', $order->id)->count())->toBe(1);
 });
 
-test('unpaid orders expire and release product stock', function () {
-    $product = Product::factory()->withStock(1)->create();
+test('unpaid orders expire and release ingredient stock', function () {
+    $product = Product::factory()->withRecipe(1)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
@@ -313,12 +318,13 @@ test('unpaid orders expire and release product stock', function () {
     drainDomainEvents();
 
     expect($order->fresh()->status)->toBe('expired')
-        ->and($product->fresh()->current_stock)->toBe(1)
-        ->and($product->fresh()->reserved_stock)->toBe(0);
+        ->and($ingredient->fresh()->current_stock)->toBe('1.00')
+        ->and($ingredient->fresh()->reserved_stock)->toBe('0.00');
 });
 
-test('competing orders cannot reserve the same final product unit', function () {
-    $product = Product::factory()->withStock(1)->create();
+test('competing orders cannot reserve the same final ingredient portion', function () {
+    $product = Product::factory()->withRecipe(1)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $input = [
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
@@ -333,11 +339,11 @@ test('competing orders cannot reserve the same final product unit', function () 
     sort($statuses);
 
     expect($statuses)->toBe(['rejected', 'waiting_payment'])
-        ->and($product->fresh()->reserved_stock)->toBe(1);
+        ->and($ingredient->fresh()->reserved_stock)->toBe('1.00');
 });
 
 test('cash payment retry records one payment and invalid transition is rejected', function () {
-    $product = Product::factory()->withStock(2)->create();
+    $product = Product::factory()->withRecipe(2)->create();
     $cashier = User::factory()->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
@@ -357,7 +363,7 @@ test('cash payment retry records one payment and invalid transition is rejected'
 })->throws(ValidationException::class);
 
 test('an outbox event remains pending while the dispatcher is not running', function () {
-    $product = Product::factory()->withStock(2)->create();
+    $product = Product::factory()->withRecipe(2)->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
@@ -373,7 +379,8 @@ test('an outbox event remains pending while the dispatcher is not running', func
 });
 
 test('reordered events wait for the preceding aggregate version', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
@@ -392,12 +399,12 @@ test('reordered events wait for the preceding aggregate version', function () {
     drainDomainEvents();
 
     expect($order->fresh()->status)->toBe('cancelled')
-        ->and($product->fresh()->reserved_stock)->toBe(0)
+        ->and($ingredient->fresh()->reserved_stock)->toBe('0.00')
         ->and(DB::table('domain_event_receipts')->where('event_id', $cancelledId)->count())->toBe(4);
 });
 
 test('recipe changes after submission do not change reserved ingredient quantities', function () {
-    $product = Product::factory()->withStock(2)->create();
+    $product = Product::factory()->create();
     $ingredient = InventoryItem::create(['name' => 'Base', 'unit' => 'g', 'current_stock' => 10, 'low_stock_threshold' => 2]);
     $recipe = Recipe::create(['product_id' => $product->id, 'inventory_item_id' => $ingredient->id, 'quantity_required' => 1.5]);
     $order = app(SubmitOrder::class)->handle([
@@ -414,7 +421,8 @@ test('recipe changes after submission do not change reserved ingredient quantiti
 });
 
 test('cancelling an unpaid reserved order releases its stock once', function () {
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
+    $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
@@ -427,8 +435,8 @@ test('cancelling an unpaid reserved order releases its stock once', function () 
     drainDomainEvents();
 
     expect($order->fresh()->status)->toBe('cancelled')
-        ->and($product->fresh()->current_stock)->toBe(1)
-        ->and($product->fresh()->reserved_stock)->toBe(0);
+        ->and($ingredient->fresh()->current_stock)->toBe('1.00')
+        ->and($ingredient->fresh()->reserved_stock)->toBe('0.00');
 });
 
 test('paid and ready orders notify the kitchen and waiter once', function () {
@@ -439,7 +447,7 @@ test('paid and ready orders notify the kitchen and waiter once', function () {
     $waiter = User::factory()->create();
     $waiter->assignRole('waiter');
     $cashier = User::factory()->create();
-    $product = Product::factory()->withStock(1)->create();
+    $product = Product::factory()->withRecipe(1)->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',

@@ -21,7 +21,6 @@ class DemoCatalogSeeder extends Seeder
             'price' => 25000,
             'image_url' => null,
         ]);
-        $catalog->setProductStock($product->id, 50, 5);
         $ingredient = $catalog->saveIngredient(null, [
             'name' => 'Base Ingredient',
             'unit' => 'g',

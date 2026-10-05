@@ -17,7 +17,8 @@ test('Redis worker recovers the full order workflow after an outage without dupl
     config(['pos.domain_queue' => $queue]);
 
     try {
-        $product = Product::factory()->withStock(2)->create(['price' => 12000]);
+        $product = Product::factory()->withRecipe(2)->create(['price' => 12000]);
+        $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
         $cashier = User::factory()->create();
         $order = app(SubmitOrder::class)->handle([
             'order_type' => 'dine_in',
@@ -32,7 +33,7 @@ test('Redis worker recovers the full order workflow after an outage without dupl
 
         drainRecoveryQueue($queue);
         expect($order->fresh()->status)->toBe('waiting_payment')
-            ->and($product->fresh()->reserved_stock)->toBe(1);
+            ->and($ingredient->fresh()->reserved_stock)->toBe('1.00');
 
         app(RecordCashPayment::class)->handle($order->id, $cashier->id, 'recovery-cash');
         drainRecoveryQueue($queue);
@@ -50,8 +51,8 @@ test('Redis worker recovers the full order workflow after an outage without dupl
         Artisan::call('queue:work', ['connection' => 'redis', '--queue' => $queue, '--once' => true, '--tries' => 1]);
 
         expect(Order::findOrFail($order->id)->status)->toBe('completed')
-            ->and($product->fresh()->current_stock)->toBe(1)
-            ->and($product->fresh()->reserved_stock)->toBe(0)
+            ->and($ingredient->fresh()->current_stock)->toBe('1.00')
+            ->and($ingredient->fresh()->reserved_stock)->toBe('0.00')
             ->and(DB::table('order_read_models')->where('order_id', $order->id)->value('status'))->toBe('completed')
             ->and((float) DB::table('order_read_models')->where('order_id', $order->id)->value('total_amount'))->toBe(12000.0)
             ->and(DB::table('domain_outbox')->whereNull('processed_at')->count())->toBe(0);
@@ -66,7 +67,8 @@ test('Redis worker resumes a verified customer order before kitchen preparation'
     config(['pos.domain_queue' => $queue]);
 
     try {
-        $product = Product::factory()->withStock(1)->create(['price' => 12000]);
+        $product = Product::factory()->withRecipe(1)->create(['price' => 12000]);
+        $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
         $cashier = User::factory()->create();
         $order = app(SubmitOrder::class)->handle([
             'order_type' => 'dine_in', 'table_number' => 2, 'customer_name' => 'Recovery customer',
@@ -75,14 +77,14 @@ test('Redis worker resumes a verified customer order before kitchen preparation'
 
         drainRecoveryQueue($queue);
         expect($order->fresh()->status)->toBe('awaiting_verification')
-            ->and($product->fresh()->reserved_stock)->toBe(1);
+            ->and($ingredient->fresh()->reserved_stock)->toBe('1.00');
 
         app(TransitionOrder::class)->verify($order->id);
         expect($order->fresh()->status)->toBe('verifying');
         drainRecoveryQueue($queue);
         expect($order->fresh()->status)->toBe('pending')
-            ->and($product->fresh()->current_stock)->toBe(0)
-            ->and($product->fresh()->reserved_stock)->toBe(0);
+            ->and($ingredient->fresh()->current_stock)->toBe('0.00')
+            ->and($ingredient->fresh()->reserved_stock)->toBe('0.00');
 
         app(TransitionOrder::class)->startPreparation($order->id);
         drainRecoveryQueue($queue);

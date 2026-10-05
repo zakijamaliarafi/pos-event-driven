@@ -11,7 +11,7 @@
             @auth
                 @if(auth()->user()->hasRole('cashier')) <a class="hover:text-pos-link" href="{{ route('order.create') }}">Kasir</a> @endif
                 @if(auth()->user()->hasRole('manager'))
-                    @foreach(['dashboard.revenue' => 'Dasbor', 'menu.menu' => 'Produk', 'menu.category' => 'Kategori', 'menu.inventory' => 'Stok', 'menu.ingredient' => 'Bahan', 'menu.recipes' => 'Resep', 'menu.discount' => 'Diskon'] as $route => $label)
+                    @foreach(['dashboard.revenue' => 'Dasbor', 'menu.menu' => 'Produk', 'menu.category' => 'Kategori', 'menu.ingredient' => 'Bahan', 'menu.recipes' => 'Resep', 'menu.discount' => 'Diskon'] as $route => $label)
                         <a href="{{ route($route) }}" @if($pageUrl === route($route)) aria-current="page" @endif class="rounded-lg px-3 py-2 {{ $pageUrl === route($route) ? 'bg-pos-action font-semibold text-pos-action-foreground' : 'hover:bg-pos-soft hover:text-pos-link' }}">{{ $label }}</a>
                     @endforeach
                 @endif

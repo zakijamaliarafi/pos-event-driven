@@ -2,6 +2,7 @@
 
 namespace App\Domain\Inventory;
 
+use App\Domain\Catalog\ProductAvailability;
 use App\Domain\Events\DomainEvent;
 use App\Domain\Events\RecordDomainEvent;
 use App\Models\InventoryItem;
@@ -32,39 +33,37 @@ final class InventoryEventConsumer
         }
 
         $order->load('items');
-        $productQuantities = [];
         $ingredientQuantities = [];
+        $reason = $order->items->isEmpty() ? 'Recipe is unavailable.' : null;
 
         foreach ($order->items as $item) {
-            $productQuantities[$item->product_id] = ($productQuantities[$item->product_id] ?? 0) + $item->quantity;
-
-            foreach ($item->recipe_snapshot ?? [] as $recipe) {
-                $id = $recipe['inventory_item_id'];
-                $ingredientQuantities[$id] = round(($ingredientQuantities[$id] ?? 0) + $recipe['quantity_required'] * $item->quantity, 2);
-            }
-        }
-
-        ksort($productQuantities);
-        ksort($ingredientQuantities);
-
-        $products = Product::withTrashed()->whereIn('id', array_keys($productQuantities))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-        $ingredients = InventoryItem::whereIn('id', array_keys($ingredientQuantities))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-        $reason = null;
-
-        foreach ($productQuantities as $id => $quantity) {
-            $product = $products->get($id);
-
-            if (! $product || ! $product->is_available || $product->current_stock - $product->reserved_stock < $quantity) {
-                $reason = 'Product stock is unavailable.';
+            if (empty($item->recipe_snapshot)) {
+                $reason = 'Recipe is unavailable.';
                 break;
             }
+
+            foreach ($item->recipe_snapshot as $recipe) {
+                $id = $recipe['inventory_item_id'];
+                $quantity = ProductAvailability::hundredths($recipe['quantity_required']);
+
+                if ($quantity <= 0) {
+                    $reason = 'Recipe is unavailable.';
+                    break 2;
+                }
+
+                $ingredientQuantities[$id] = ($ingredientQuantities[$id] ?? 0) + $quantity * $item->quantity;
+            }
         }
+
+        ksort($ingredientQuantities);
+
+        $ingredients = InventoryItem::whereIn('id', array_keys($ingredientQuantities))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
         if ($reason === null) {
             foreach ($ingredientQuantities as $id => $quantity) {
                 $ingredient = $ingredients->get($id);
 
-                if (! $ingredient || (float) $ingredient->current_stock - (float) $ingredient->reserved_stock + 0.00001 < $quantity) {
+                if (! $ingredient || ProductAvailability::hundredths($ingredient->current_stock) - ProductAvailability::hundredths($ingredient->reserved_stock) < $quantity) {
                     $reason = 'Ingredient stock is unavailable.';
                     break;
                 }
@@ -77,18 +76,11 @@ final class InventoryEventConsumer
             return;
         }
 
-        foreach ($productQuantities as $id => $quantity) {
-            $product = $products->get($id);
-            $product->reserved_stock += $quantity;
-            $product->save();
-            $this->storeReservation($order->id, 'product', $id, $quantity);
-        }
-
         foreach ($ingredientQuantities as $id => $quantity) {
             $ingredient = $ingredients->get($id);
-            $ingredient->reserved_stock = round((float) $ingredient->reserved_stock + $quantity, 2);
+            $ingredient->reserved_stock = (ProductAvailability::hundredths($ingredient->reserved_stock) + $quantity) / 100;
             $ingredient->save();
-            $this->storeReservation($order->id, 'ingredient', $id, $quantity);
+            $this->storeReservation($order->id, 'ingredient', $id, $quantity / 100);
         }
 
         $this->events->record($order, 'InventoryReserved', ['order_id' => $order->id], $event->correlationId);

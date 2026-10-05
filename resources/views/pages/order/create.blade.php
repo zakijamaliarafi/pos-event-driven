@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Catalog\ProductAvailability;
 use App\Domain\Orders\RecordCashPayment;
 use App\Domain\Orders\SubmitOrder;
 use App\Domain\Orders\TransitionOrder;
@@ -59,10 +60,14 @@ new class extends Component {
         $this->message = __('orders.messages.cashier_cancelled', ['number' => $order->order_number]);
     }
 
-    public function with(): array
+    public function with(ProductAvailability $availability): array
     {
+        $products = Product::with(['discounts', 'recipes.inventoryItem'])->orderBy('name')->get();
+        $availableQuantities = $products->mapWithKeys(fn (Product $product): array => [$product->id => $availability->availableQuantity($product)]);
+
         return [
-            'products' => Product::query()->with('discounts')->where('is_available', true)->orderBy('name')->get(),
+            'products' => $products->filter(fn (Product $product): bool => $availableQuantities[$product->id] > 0),
+            'availableQuantities' => $availableQuantities,
             'activeOrders' => Order::query()
                 ->whereIn('status', ['awaiting_inventory', 'awaiting_verification', 'verifying', 'waiting_payment', 'pending', 'preparing', 'ready', 'awaiting_payment'])
                 ->where(fn ($query) => $query->whereDate('created_at', today())->orWhereNotNull('device_id'))
@@ -91,7 +96,7 @@ new class extends Component {
                     <div class="rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm">
                         <h2 class="font-semibold">{{ $product->name }}</h2>
                         <p class="mt-1 text-sm font-semibold text-pos-link">{{ config('pos.currency') }} {{ number_format($product->active_price, 0) }}</p>
-                        <p class="mt-1 text-xs text-pos-muted">Tersedia: {{ max(0, $product->current_stock - $product->reserved_stock) }}</p>
+                        <p class="mt-1 text-xs text-pos-muted">Tersedia: {{ $availableQuantities[$product->id] }}</p>
                         <label class="mt-4 block text-sm text-pos-muted">Jumlah<input type="number" min="0" max="100" wire:model.number="quantities.{{ $product->id }}" class="mt-1 w-full rounded-lg border border-pos-border-strong px-3 py-2"></label>
                     </div>
                 @endforeach

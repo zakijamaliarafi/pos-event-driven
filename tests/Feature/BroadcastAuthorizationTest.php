@@ -29,7 +29,7 @@ test('only staff roles can subscribe to staff order updates', function (string $
 })->with(['cashier', 'manager', 'kitchen', 'waiter']);
 
 test('customer private channels are limited to orders from their device cookie', function () {
-    $product = Product::factory()->withStock(2)->create();
+    $product = Product::factory()->withRecipe(2)->create();
     $ownDeviceId = (string) Str::uuid();
     $otherDeviceId = (string) Str::uuid();
     $ownOrder = app(SubmitOrder::class)->handle([
