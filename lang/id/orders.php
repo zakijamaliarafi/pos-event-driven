@@ -35,6 +35,8 @@ return [
     ],
     'errors' => [
         'empty_cart' => 'Pilih setidaknya satu produk.',
+        'invalid_quantity' => 'Jumlah produk harus berupa bilangan bulat dari 1 sampai 100. Hapus pilihan yang tidak valid lalu tambahkan kembali.',
+        'cart_changed' => 'Ketersediaan menu berubah. Kurangi jumlah atau hapus produk yang tidak tersedia sebelum mengirim.',
         'product_unavailable' => 'Produk yang dipilih tidak tersedia.',
         'preparation_pending' => 'Penyiapan atau pemakaian stok masih diproses.',
         'not_ready_to_serve' => 'Hanya pesanan yang siap yang dapat disajikan.',

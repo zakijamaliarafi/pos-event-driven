@@ -1,9 +1,13 @@
-@php($pageUrl = \Livewire\Livewire::originalUrl())
-<header class="border-b border-pos-border bg-pos-surface">
-    <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-5 px-5 py-4">
+@props(['customerToolbar' => false])
+@php
+    $pageUrl = \Livewire\Livewire::originalUrl();
+    $isCustomerPage = parse_url($pageUrl, PHP_URL_PATH) === parse_url(route('customer.order'), PHP_URL_PATH);
+@endphp
+<header class="border-b border-pos-border bg-pos-surface {{ $customerToolbar ? 'sticky top-0 z-30' : '' }}">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center {{ $customerToolbar ? 'gap-3 px-4 py-3 sm:px-6' : 'gap-5 px-5 py-4' }}">
         <a href="{{ route('home') }}" aria-label="POS" class="flex items-center gap-3 text-lg font-bold text-pos-ink">
             <img src="{{ asset('oemah-tahu-mark.svg') }}" class="h-10 w-10 shrink-0" alt="">
-            @if($pageUrl === route('customer.order'))
+            @if($isCustomerPage)
                 <span class="leading-tight">Oemah Tahu<br class="sm:hidden"> Purwokerto</span>
             @endif
         </a>
@@ -20,7 +24,7 @@
             @endauth
         </nav>
         <div class="ml-auto flex shrink-0 items-center gap-2">
-            <flux:button x-data x-on:click="$flux.dark = ! $flux.dark" square aria-label="Tampilan" x-bind:aria-label="$flux.dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'" class="border-pos-border-strong bg-pos-surface text-pos-ink hover:bg-pos-soft" data-test="theme-toggle">
+            <flux:button x-data x-on:click="$flux.dark = ! $flux.dark" square aria-label="Tampilan" x-bind:aria-label="$flux.dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'" class="border-pos-border-strong bg-pos-surface text-pos-ink hover:bg-pos-soft {{ $customerToolbar ? 'min-h-11 min-w-11' : '' }}" data-test="theme-toggle">
                 <flux:icon.moon class="size-5 dark:hidden" />
                 <flux:icon.sun class="hidden size-5 dark:block" />
             </flux:button>
@@ -54,5 +58,11 @@
                 </flux:dropdown>
             @endauth
         </div>
+        @if($customerToolbar)
+            <div class="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
+                {{ $customerContext ?? '' }}
+                <div class="flex min-w-0 flex-wrap items-center gap-2">{{ $customerActions ?? '' }}</div>
+            </div>
+        @endif
     </div>
 </header>

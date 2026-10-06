@@ -12,7 +12,7 @@ test('customer ordering page is public', function () {
     $this->get(route('customer.order'))
         ->assertOk()
         ->assertSee('Oemah Tahu Purwokerto')
-        ->assertSee('Buat pesanan')
+        ->assertSee('Pilih menu favorit Anda')
         ->assertSee('Kirim pesanan')
         ->assertSee('data-test="theme-toggle"', false)
         ->assertDontSee('wire:poll', false)
@@ -156,6 +156,23 @@ test('authenticated staff retain customer branding on the public ordering page',
         ->assertDontSee('Pesan sebagai pelanggan')
         ->assertSee('data-test="user-menu-toggle"', false)
         ->assertSee($user->name);
+});
+
+test('table links retain customer branding after Livewire updates', function () {
+    $page = $this->get(route('customer.order', ['table' => 10]))
+        ->assertOk()->assertSee('Oemah Tahu<br', false)->assertSee('Meja 10');
+
+    $document = new DOMDocument;
+    @$document->loadHTML($page->getContent());
+    $snapshot = (new DOMXPath($document))->query('//*[@*[name()="wire:snapshot"]]')->item(0)->getAttribute('wire:snapshot');
+    $response = $this->withHeaders(['X-Livewire' => ''])->postJson(Livewire::getUpdateUri(), [
+        'components' => [[
+            'snapshot' => $snapshot,
+            'updates' => [],
+            'calls' => [['path' => '', 'method' => 'refreshOrders', 'params' => []]],
+        ]],
+    ])->assertOk();
+    expect($response->json('components.0.effects.html'))->toContain('Oemah Tahu<br', 'Meja 10');
 });
 
 test('header notifications show the unread count and only the latest five unread alerts', function () {

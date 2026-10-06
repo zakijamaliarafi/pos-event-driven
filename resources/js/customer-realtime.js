@@ -1,4 +1,5 @@
 import './echo';
+import './customer-order-ui';
 
 const subscribedOrders = new Set();
 

@@ -139,6 +139,46 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
-/* \[:where(&)\]:size-4 {
-    @apply size-4;
-} */
+[x-cloak] {
+    display: none !important;
+}
+
+[data-customer-order] input[data-flux-control] {
+    min-height: 44px;
+}
+
+[data-customer-order] .customer-sheet {
+    position: fixed;
+    inset: auto 0 0;
+    margin: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    max-height: 90dvh;
+    overflow: hidden;
+    border-radius: 1.5rem 1.5rem 0 0;
+    color: var(--pos-ink);
+    border: 1px solid var(--pos-border);
+}
+
+[data-customer-order] .customer-cart-form {
+    max-height: 90dvh;
+}
+
+@media (min-width: 1024px) {
+    [data-customer-order] .customer-sheet {
+        inset: 0;
+        margin: auto;
+        width: min(40rem, calc(100% - 3rem));
+        height: fit-content;
+        border-radius: 1.5rem;
+    }
+
+    [data-customer-order] #desktop-cart .customer-cart-form {
+        max-height: calc(100dvh - var(--customer-header-height, 8rem) - 2rem);
+    }
+
+    [data-customer-order] #desktop-cart {
+        top: calc(var(--customer-header-height, 8rem) + 1rem);
+    }
+}
