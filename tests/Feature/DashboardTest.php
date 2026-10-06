@@ -219,7 +219,7 @@ test('dashboard describes the actual reporting period in Indonesian and the appl
     ['month', '1 Oktober 2026, 00:00'],
 ]);
 
-test('manual refresh retains the selected period and updates all reporting sections', function () {
+test('programmatic refresh retains the selected period and updates all reporting sections', function () {
     $this->travelTo(now()->setDate(2026, 10, 14)->setTime(14, 30));
     $product = Product::factory()->withRecipe()->create(['price' => 12500]);
     dashboardSale($product, '2026-10-13 12:00:00');
@@ -288,7 +288,7 @@ test('empty dashboard has clear messages and finite chart coordinates', function
     $dashboard = Livewire::actingAs(dashboardManager())->test('pages::dashboard.revenue')
         ->assertSee('Belum ada pesanan dibayar pada periode ini. Grafik menampilkan nilai nol.')
         ->assertSee('Belum ada penjualan yang dibayar pada periode ini.')
-        ->assertSee('Muat ulang')
+        ->assertDontSee('wire:click="refreshMetrics"', false)
         ->assertSee('Memuat dasbor…');
 
     foreach ($dashboard->viewData('trendCharts') as $chart) {

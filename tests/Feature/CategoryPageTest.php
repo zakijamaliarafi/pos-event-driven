@@ -317,7 +317,7 @@ test('category page renders long names mobile cards and protected dialogs', func
     $name = str_repeat('Kategori panjang ', 15);
     Category::factory()->create(['name' => $name]);
     $this->get(route('menu.category'))->assertOk()->assertSee($name)->assertSee('lg:hidden', false)
-        ->assertSee('hidden lg:block', false)->assertSee('Jumlah produk')->assertSee('Muat ulang')
+        ->assertSee('hidden lg:block', false)->assertSee('Jumlah produk')->assertDontSee('wire:click="refreshCategories"', false)
         ->assertDontSee('wire:confirm', false)->assertDontSee('wire:poll', false);
     Livewire::test('pages::menu.manage')->set('section', 'categories')->call('createCategory')->assertSee('Slug dibuat otomatis');
 });

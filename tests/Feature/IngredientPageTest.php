@@ -29,7 +29,7 @@ test('ingredient page renders stock quantities and responsive controls', functio
         ->assertSee('Kelola Bahan')->assertSee('Cari nama bahan...')->assertSee('Status stok')
         ->assertSee('Stok total')->assertSee('Dicadangkan')->assertSee('Stok tersedia')
         ->assertSee('12,55 ml')->assertSee('2,15 ml')->assertSee('10,40 ml')
-        ->assertSee('Muat ulang')->assertSee('Tambah bahan')->assertSee('Menampilkan 1 sampai 1 dari 1 bahan')
+        ->assertDontSee('wire:click="refreshIngredients"', false)->assertSee('Tambah bahan')->assertSee('Menampilkan 1 sampai 1 dari 1 bahan')
         ->assertSee('aria-label="Ubah bahan Susu segar"', false)->assertSee('aria-label="Hapus bahan Susu segar"', false)
         ->assertDontSee('Bahan dihapus')->assertDontSee('wire:poll', false);
     $document = new DOMDocument;

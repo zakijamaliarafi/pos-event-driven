@@ -169,7 +169,7 @@ test('kitchen transitions move cards without waiting for projection and reject s
         ->assertSet('orderErrors.'.$order->id, __('orders.errors.preparation_pending'));
     expect($order->fresh()->status)->toBe('ready')
         ->and(DB::table('domain_outbox')->where('aggregate_id', $order->id)->count())->toBe(2);
-    $page->call('start', 999999)->assertSee('Pesanan tidak ditemukan. Muat ulang antrean.');
+    $page->call('start', 999999)->assertSee('Pesanan tidak ditemukan. Muat ulang halaman melalui browser.');
 });
 
 test('kitchen refresh includes newly projected orders', function () {

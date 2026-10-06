@@ -254,7 +254,6 @@ new class extends Component {
                         <h1 class="mt-1 text-2xl font-bold sm:text-3xl">Pilih menu favorit Anda</h1>
                         <p class="mt-2 max-w-2xl text-sm leading-relaxed text-pos-muted">Pesanan diverifikasi pramusaji. Bayar tunai di kasir setelah makan.</p>
                     </div>
-                    <flux:button wire:click="refreshOrders" wire:loading.attr="disabled" wire:target="refreshOrders" class="min-h-11" icon="arrow-path">Muat ulang</flux:button>
                 </div>
                 @if($message)
                     <p role="status" class="rounded-xl border border-pos-border bg-pos-soft p-4 text-sm leading-relaxed">{{ $message }}</p>
@@ -290,7 +289,7 @@ new class extends Component {
                         <div class="col-span-full rounded-2xl border border-dashed border-pos-border-strong bg-pos-surface p-8 text-center">
                             <flux:icon.shopping-bag class="mx-auto mb-3 size-9 text-pos-muted" />
                             <h2 class="font-semibold">{{ $hasAvailableProducts ? 'Menu tidak ditemukan' : 'Belum ada produk yang tersedia.' }}</h2>
-                            <p class="mt-2 text-sm text-pos-muted">{{ $hasAvailableProducts ? 'Coba nama menu atau kategori lain.' : 'Silakan muat ulang atau tanyakan kepada pramusaji.' }}</p>
+                            <p class="mt-2 text-sm text-pos-muted">{{ $hasAvailableProducts ? 'Coba nama menu atau kategori lain.' : 'Silakan tanyakan ketersediaan menu kepada pramusaji.' }}</p>
                             @if($hasAvailableProducts)
                                 <flux:button wire:click="resetFilters" class="mt-4 min-h-11">Reset pencarian</flux:button>
                             @endif
@@ -317,10 +316,7 @@ new class extends Component {
             </div>
             <div class="min-h-0 space-y-5 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5" aria-live="polite">
                 @error('order')<p role="alert" class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-3 text-sm text-pos-danger">{{ $message }}</p>@enderror
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <h3 class="font-semibold">Pesanan aktif ({{ $activeOrders->count() }})</h3>
-                    <flux:button wire:click="refreshOrders" wire:loading.attr="disabled" wire:target="refreshOrders" class="min-h-11" size="sm">Muat ulang</flux:button>
-                </div>
+                <h3 class="font-semibold">Pesanan aktif ({{ $activeOrders->count() }})</h3>
                 @forelse($activeOrders as $order)
                     <x-customer-order-status :order="$order" :highlighted="$order->id === $submittedOrderId" wire:key="customer-active-order-{{ $order->id }}" />
                 @empty

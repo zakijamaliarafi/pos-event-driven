@@ -127,7 +127,6 @@ new class extends Component
                             <flux:select.option value="month">Bulan ini</flux:select.option>
                         </flux:select>
                     </flux:field>
-                    <flux:button wire:click="refreshMetrics" wire:loading.attr="disabled" wire:target="range,refreshMetrics" icon="arrow-path" class="min-h-11 shrink-0 border-pos-border-strong bg-pos-surface text-pos-ink" data-test="dashboard-refresh">Muat ulang</flux:button>
                 </div>
                 <div class="min-h-5 text-sm text-pos-muted" role="status" aria-live="polite">
                     <span wire:loading.delay>Memuat dasbor…</span>

@@ -995,7 +995,7 @@ new class extends Component
 
             return;
         } catch (ModelNotFoundException $exception) {
-            $this->addError('discountForm', 'Diskon sudah dihapus atau tidak ditemukan. Tutup formulir dan muat ulang daftar.');
+            $this->addError('discountForm', 'Diskon sudah dihapus atau tidak ditemukan. Tutup formulir dan muat ulang halaman melalui browser.');
 
             return;
         } catch (Throwable $exception) {
@@ -1085,7 +1085,7 @@ new class extends Component
         $this->resetValidation();
         $discount = Discount::with('products')->find($id);
         if (! $discount) {
-            $this->addError('discountList', 'Diskon sudah dihapus atau tidak ditemukan. Muat ulang daftar.');
+            $this->addError('discountList', 'Diskon sudah dihapus atau tidak ditemukan. Muat ulang halaman melalui browser.');
 
             return;
         }
@@ -1117,7 +1117,7 @@ new class extends Component
 
             return;
         } catch (ModelNotFoundException $exception) {
-            $this->addError('discountList', 'Diskon sudah dihapus atau tidak ditemukan. Muat ulang daftar.');
+            $this->addError('discountList', 'Diskon sudah dihapus atau tidak ditemukan. Muat ulang halaman melalui browser.');
 
             return;
         } catch (Throwable $exception) {
@@ -1136,7 +1136,7 @@ new class extends Component
         $this->resetValidation();
         $discount = Discount::find($id);
         if (! $discount) {
-            $this->addError('discountList', 'Diskon sudah dihapus atau tidak ditemukan. Muat ulang daftar.');
+            $this->addError('discountList', 'Diskon sudah dihapus atau tidak ditemukan. Muat ulang halaman melalui browser.');
 
             return;
         }
@@ -1161,7 +1161,7 @@ new class extends Component
         try {
             $catalog->deleteDiscount($this->deletingDiscountId);
         } catch (ModelNotFoundException $exception) {
-            $this->addError('discountDelete', 'Diskon sudah dihapus atau tidak ditemukan. Tutup konfirmasi dan muat ulang daftar.');
+            $this->addError('discountDelete', 'Diskon sudah dihapus atau tidak ditemukan. Tutup konfirmasi dan muat ulang halaman melalui browser.');
 
             return;
         } catch (Throwable $exception) {
@@ -1349,7 +1349,6 @@ new class extends Component
                 <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div class="min-w-0"><h1 id="categories-heading" tabindex="-1" class="text-3xl font-extrabold tracking-tight">Kelola Kategori</h1><p class="mt-2 text-pos-muted">Atur kelompok menu dan lihat jumlah produk dalam setiap kategori.</p></div>
                     <div class="flex flex-wrap gap-3">
-                        <flux:button wire:click="refreshCategories" wire:loading.attr="disabled" icon="arrow-path" class="min-h-11">Muat ulang</flux:button>
                         <flux:button data-category-open="new" wire:click="createCategory" wire:loading.attr="disabled" variant="primary" icon="plus" class="min-h-11">Tambah kategori</flux:button>
                     </div>
                 </div>
@@ -1429,7 +1428,6 @@ new class extends Component
                         <p class="mt-2 text-pos-muted">Atur informasi produk dan lihat kesiapan menu untuk dipesan.</p>
                     </div>
                     <div class="flex flex-wrap gap-3">
-                        <flux:button wire:click="refreshProducts" wire:loading.attr="disabled" wire:target="refreshProducts" icon="arrow-path" class="min-h-11">Muat ulang</flux:button>
                         <flux:button data-product-open="new" wire:click="createProduct" variant="primary" icon="plus" class="min-h-11">Tambah produk</flux:button>
                     </div>
                 </div>
@@ -1446,7 +1444,7 @@ new class extends Component
                     @endif
                 </div>
                 <div class="mt-4 flex flex-col gap-2 text-sm sm:flex-row sm:items-start sm:justify-between">
-                    <p class="max-w-2xl text-pos-muted">Porsi tersedia dihitung dari stok bahan setelah dikurangi pencadangan. Gunakan Muat ulang untuk melihat stok terbaru.</p>
+                    <p class="max-w-2xl text-pos-muted">Porsi tersedia dihitung dari stok bahan setelah dikurangi pencadangan. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
                     <a href="{{ route('menu.recipes') }}" class="inline-flex min-h-11 shrink-0 items-center rounded-lg font-semibold text-pos-link underline underline-offset-4">Kelola resep</a>
                 </div>
                 <p wire:loading.delay wire:target="productSearch,productCategoryFilter,resetProductFilters,refreshProducts,nextPage,previousPage" role="status" class="mt-3 text-sm text-pos-link">Memuat produk...</p>
@@ -1577,7 +1575,7 @@ new class extends Component
                     <flux:heading id="product-delete-heading" size="lg" level="2" class="text-pos-ink">Hapus produk?</flux:heading>
                     <p id="product-delete-description" class="break-words font-semibold">{{ $deletingProduct?->name ?? 'Produk sudah dihapus' }}</p>
                     @error('productDelete')<div role="alert" class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-sm text-pos-danger">{{ $message }}</div>@enderror
-                    <p class="text-sm text-pos-muted">{{ $deletingProduct ? 'Produk ini akan dihapus dari menu dan tidak dapat dipilih untuk pesanan baru. Pesanan yang sudah dibuat tetap tersimpan.' : 'Produk tidak tersedia. Tutup dialog dan muat ulang daftar.' }}</p>
+                    <p class="text-sm text-pos-muted">{{ $deletingProduct ? 'Produk ini akan dihapus dari menu dan tidak dapat dipilih untuk pesanan baru. Pesanan yang sudah dibuat tetap tersimpan.' : 'Produk tidak tersedia. Tutup dialog dan muat ulang halaman melalui browser.' }}</p>
                     <div class="flex flex-wrap justify-end gap-3">
                         <flux:button autofocus type="button" wire:click="closeProductDeleteModal" wire:loading.attr="disabled" wire:target="deleteProduct" class="min-h-11">Batal</flux:button>
                         <flux:button wire:key="product-delete-{{ $deletingProduct ? 'allowed' : 'blocked' }}" type="button" wire:click="deleteProduct" variant="danger" :disabled="! $deletingProduct" wire:loading.attr="disabled" wire:target="deleteProduct" class="min-h-11"><span wire:loading.remove wire:target="deleteProduct">Hapus produk</span><span wire:loading wire:target="deleteProduct">Menghapus...</span></flux:button>
@@ -1592,7 +1590,6 @@ new class extends Component
                         <p class="mt-2 text-pos-muted">Kelola bahan resep dan pantau stok yang dapat digunakan.</p>
                     </div>
                     <div class="flex flex-wrap gap-3">
-                        <flux:button wire:click="refreshIngredients" wire:loading.attr="disabled" wire:target="refreshIngredients" icon="arrow-path">Muat ulang</flux:button>
                         <flux:button data-ingredient-open="create" wire:click="createIngredient" variant="primary" icon="plus">Tambah bahan</flux:button>
                     </div>
                 </div>
@@ -1608,7 +1605,7 @@ new class extends Component
                 <div class="mt-5 rounded-xl border border-pos-border bg-pos-soft p-4 text-sm text-pos-muted">
                     <p>Stok total mencakup stok yang dicadangkan untuk pesanan. Stok tersedia = stok total − dicadangkan.</p>
                     <p class="mt-1">Status Rendah berarti stok tersedia berada pada atau di bawah batas stok rendah. Status ini tidak memicu notifikasi atau membatasi penjualan.</p>
-                    <p class="mt-1">Stok ditampilkan saat halaman dimuat. Gunakan Muat ulang untuk melihat perubahan terbaru.</p>
+                    <p class="mt-1">Stok ditampilkan saat halaman dimuat. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
                 </div>
                 <p wire:loading.delay wire:target="ingredientSearch,ingredientStatusFilter,resetIngredientFilters,refreshIngredients,nextPage,previousPage" role="status" class="mt-3 text-sm text-pos-link">Memuat bahan...</p>
 
@@ -1723,7 +1720,7 @@ new class extends Component
                     <p id="ingredient-delete-description" class="break-words text-sm">{{ $deletingIngredient?->name ?? 'Bahan sudah dihapus' }}</p>
                     @error('ingredientDelete')<div role="alert" class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-sm text-pos-danger">{{ $message }}</div>@enderror
                     @if(! $deletingIngredient)
-                        <p class="text-sm text-pos-muted">Bahan tidak tersedia. Tutup dialog dan muat ulang daftar.</p>
+                        <p class="text-sm text-pos-muted">Bahan tidak tersedia. Tutup dialog dan muat ulang halaman melalui browser.</p>
                     @elseif($deletingIngredient->recipes_count > 0 || (float) $deletingIngredient->reserved_stock > 0)
                         <div class="space-y-2 rounded-xl border border-pos-border bg-pos-soft p-4 text-sm">
                             <p class="font-semibold">Bahan belum dapat dihapus.</p>
@@ -1746,7 +1743,6 @@ new class extends Component
                         <h1 id="recipes-heading" tabindex="-1" class="text-3xl font-extrabold tracking-tight">Kelola Resep</h1>
                         <p class="mt-2 text-pos-muted">Atur kebutuhan bahan untuk satu porsi produk.</p>
                     </div>
-                    <flux:button wire:click="refreshRecipes" wire:loading.attr="disabled" wire:target="refreshRecipes" icon="arrow-path" class="shrink-0 rounded-xl">Muat ulang</flux:button>
                 </div>
                 <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <flux:input wire:model.live.debounce.300ms="recipeSearch" label="Cari produk" placeholder="Cari nama produk..." icon="magnifying-glass" />
@@ -1762,7 +1758,7 @@ new class extends Component
                         <option value="without">Tanpa resep</option>
                     </flux:select>
                 </div>
-                <p class="mt-4 text-sm text-pos-muted">Porsi tersedia dihitung dari stok bahan setelah dikurangi pencadangan saat halaman dimuat atau diperbarui. Gunakan Muat ulang untuk melihat stok terbaru.</p>
+                <p class="mt-4 text-sm text-pos-muted">Porsi tersedia dihitung dari stok bahan setelah dikurangi pencadangan saat halaman dimuat atau diperbarui. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
                 <p wire:loading.delay wire:target="recipeSearch,recipeCategoryFilter,recipePresenceFilter,refreshRecipes,nextPage,previousPage" role="status" class="mt-3 text-sm text-pos-link">Memuat produk...</p>
 
                 @if($recipeProducts->isEmpty())
@@ -1906,7 +1902,6 @@ new class extends Component
                         <p class="mt-2 text-pos-muted">Atur penawaran promo, rentang tanggal, dan jadwal mingguan.</p>
                     </div>
                     <div class="flex flex-wrap gap-3">
-                        <flux:button wire:click="refreshDiscounts" wire:loading.attr="disabled" icon="arrow-path">Muat ulang</flux:button>
                         <flux:button data-discount-open="create" wire:click="createDiscount" variant="primary" icon="plus">Tambah diskon</flux:button>
                     </div>
                 </div>
@@ -1919,7 +1914,7 @@ new class extends Component
                         <option value="">Semua jadwal</option><option value="interval">Rentang tanggal</option><option value="routine">Rutin mingguan</option>
                     </flux:select>
                 </div>
-                <p class="mt-5 rounded-xl border border-pos-border bg-pos-soft p-4 text-sm text-pos-muted">Aktif berarti diskon diizinkan untuk digunakan. Potongan hanya berlaku sesuai jadwal dan pilihan produk. Gunakan Muat ulang untuk melihat perubahan terbaru.</p>
+                <p class="mt-5 rounded-xl border border-pos-border bg-pos-soft p-4 text-sm text-pos-muted">Aktif berarti diskon diizinkan untuk digunakan. Potongan hanya berlaku sesuai jadwal dan pilihan produk. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
                 <p wire:loading.delay wire:target="discountSearch,discountStatusFilter,discountScheduleFilter,refreshDiscounts,resetDiscountFilters,nextPage,previousPage,gotoPage" role="status" class="mt-3 text-sm text-pos-link">Memuat diskon...</p>
                 @if($discountRows->isEmpty())
                     <div class="py-12 text-center">

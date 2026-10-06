@@ -54,7 +54,7 @@ new class extends Component {
         } catch (ValidationException $exception) {
             $this->orderErrors[$orderId] = collect($exception->errors())->flatten()->first();
         } catch (ModelNotFoundException) {
-            $this->orderErrors[$orderId] = 'Pesanan tidak ditemukan. Muat ulang antrean.';
+            $this->orderErrors[$orderId] = 'Pesanan tidak ditemukan. Muat ulang halaman melalui browser.';
         }
     }
 
@@ -104,10 +104,7 @@ new class extends Component {
                 <h1 class="text-2xl font-bold sm:text-3xl">Antrean dapur</h1>
                 <span class="rounded-full border border-pos-border bg-pos-soft px-3 py-1 text-sm font-semibold">{{ $activeCount }} pesanan aktif</span>
             </div>
-            <div class="flex flex-wrap items-center gap-3">
-                <p class="text-xs text-pos-muted">Terakhir diperbarui <span class="font-semibold tabular-nums">{{ $refreshedAt }}</span></p>
-                <flux:button wire:click="refreshOrders" wire:loading.attr="disabled" wire:target="refreshOrders" class="min-h-11">Muat ulang</flux:button>
-            </div>
+            <p class="text-xs text-pos-muted">Terakhir diperbarui <span class="font-semibold tabular-nums">{{ $refreshedAt }}</span></p>
         </div>
         <div role="status" aria-live="polite" aria-atomic="true" class="mb-3 text-sm font-medium text-pos-link">{{ $message }}</div>
         <p wire:loading.delay wire:target="refreshOrders" role="status" class="mb-3 text-sm text-pos-muted">Memuat antrean…</p>

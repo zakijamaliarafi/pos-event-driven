@@ -325,3 +325,34 @@ test('catalog navigation stays active after saving a category', function () {
         ->toContain('New category');
     $this->assertDatabaseHas('categories', ['name' => 'New category']);
 });
+
+test('POS pages have no page refresh buttons', function (?string $role, string $route) {
+    if ($role !== null) {
+        Role::findOrCreate($role, 'web');
+        $user = User::factory()->create();
+        $user->assignRole($role);
+        $this->actingAs($user);
+    }
+
+    $response = $this->get(route($route))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+
+    expect($xpath->query('//button[normalize-space(.)="Muat ulang"]')->length)->toBe(0);
+
+    foreach ($xpath->query('//button') as $button) {
+        expect($button->getAttribute('wire:click'))->not->toStartWith('refresh');
+    }
+})->with([
+    [null, 'customer.order'],
+    ['cashier', 'order.create'],
+    ['kitchen', 'kitchen.view'],
+    ['waiter', 'waiter.view'],
+    ['manager', 'dashboard.revenue'],
+    ['manager', 'menu.menu'],
+    ['manager', 'menu.category'],
+    ['manager', 'menu.ingredient'],
+    ['manager', 'menu.recipes'],
+    ['manager', 'menu.discount'],
+]);

@@ -301,3 +301,19 @@ test('late cancellation failures stay inside tracking and realtime refresh prese
         ->assertSet('quantities', [$product->id => 1])->assertSee('Dalam antrean dapur');
     expect($order->fresh()->status)->toBe('pending');
 });
+
+test('realtime updates preserve open customer dialogs and checkout drafts without refresh buttons', function () {
+    $product = Product::factory()->withRecipe(5)->create();
+
+    Livewire::test('pages::customer.order')
+        ->set('quantities', [$product->id => 1])
+        ->set('search', $product->name)->set('categoryId', (string) $product->category_id)
+        ->set('tableNumber', '4')->set('customerName', 'Customer')->set('customerPhone', '081234')
+        ->set('showCart', true)->set('showTracking', true)
+        ->dispatch('customer-order-view-changed')
+        ->assertSet('quantities', [$product->id => 1])
+        ->assertSet('search', $product->name)->assertSet('categoryId', (string) $product->category_id)
+        ->assertSet('tableNumber', '4')->assertSet('customerName', 'Customer')->assertSet('customerPhone', '081234')
+        ->assertSet('showCart', true)->assertSet('showTracking', true)
+        ->assertDontSee('wire:click="refreshOrders"', false);
+});

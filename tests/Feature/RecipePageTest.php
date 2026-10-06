@@ -35,7 +35,7 @@ test('recipes overview includes missing invalid and exhausted recipes with avail
         ->assertSee('Atur kebutuhan bahan untuk satu porsi produk.')
         ->assertSeeInOrder(['A Tanpa Resep', 'B Resep Rusak', 'C Stok Habis', 'D Siap Jual'])
         ->assertSee('Belum ada resep')->assertSee('Resep tidak valid')->assertSee('Resep tersedia')
-        ->assertSee('Tambah resep')->assertSee('Ubah resep')->assertSee('Muat ulang')
+        ->assertSee('Tambah resep')->assertSee('Ubah resep')->assertDontSee('wire:click="refreshRecipes"', false)
         ->assertSee('Menampilkan 1 sampai 4 dari 4 produk')->assertDontSee('Produk dihapus')
         ->assertDontSee('wire:poll', false);
     $document = new DOMDocument;
@@ -158,8 +158,8 @@ test('recipe conflicts preserve the draft and require explicit reload', function
     app(ManageCatalog::class)->saveRecipe($product->id, $ingredient->id, 3);
     $page->set('recipeRows.'.$key.'.quantity_required', '4')->call('saveWholeRecipe')
         ->assertHasErrors('recipeForm')->assertSet('recipeConflict', true)->assertSet('showRecipeModal', true)
-        ->assertSet('recipeRows.'.$key.'.quantity_required', '4')->call('requestRecipeReload')
-        ->assertSet('showRecipeDiscardConfirmation', true)->call('discardRecipeChanges')
+        ->assertSet('recipeRows.'.$key.'.quantity_required', '4')->assertSee('Muat ulang resep')->call('requestRecipeReload')
+        ->assertSet('showRecipeDiscardConfirmation', true)->assertSee('Muat ulang dan buang')->call('discardRecipeChanges')
         ->assertSet('recipeConflict', false)->assertHasNoErrors()->assertSet('recipeExpectedVersion', 1);
     expect(array_values($page->get('recipeRows'))[0]['quantity_required'])->toBe('3.00');
     $page->call('saveWholeRecipe')->assertSet('showRecipeModal', false);

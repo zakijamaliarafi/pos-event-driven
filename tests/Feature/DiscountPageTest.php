@@ -45,7 +45,7 @@ test('discount page renders the reference table with the existing navbar and sch
         ->assertSee('Tidak aktif')->assertSee('aria-current="page"', false)
         ->assertSee('aria-label="Ubah diskon Promo pembukaan"', false)
         ->assertSee('aria-label="Hapus diskon Promo pembukaan"', false)
-        ->assertDontSee('wire:poll', false)->assertSee('Cari diskon')->assertSee('Muat ulang');
+        ->assertDontSee('wire:poll', false)->assertSee('Cari diskon')->assertDontSee('wire:click="refreshDiscounts"', false);
 });
 
 test('empty discounts and nullable schedules render safely', function () {
