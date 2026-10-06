@@ -1,0 +1,70 @@
+[data-kitchen-board] {
+    --pos-kitchen-pending: #b52b27;
+    --pos-kitchen-preparing: #985400;
+    --pos-kitchen-ready: #217331;
+    --pos-kitchen-served: #1768b5;
+    --pos-kitchen-stage-foreground: #ffffff;
+}
+
+.dark [data-kitchen-board] {
+    --pos-kitchen-pending: #ff9c96;
+    --pos-kitchen-preparing: #ffcc73;
+    --pos-kitchen-ready: #8bdda0;
+    --pos-kitchen-served: #91c9ff;
+    --pos-kitchen-stage-foreground: #0d241b;
+}
+
+[data-kitchen-lane='pending'] { --pos-kitchen-stage: var(--pos-kitchen-pending); }
+[data-kitchen-lane='preparing'] { --pos-kitchen-stage: var(--pos-kitchen-preparing); }
+[data-kitchen-lane='ready'] { --pos-kitchen-stage: var(--pos-kitchen-ready); }
+[data-kitchen-lane='served'] { --pos-kitchen-stage: var(--pos-kitchen-served); }
+
+[data-kitchen-board] .kitchen-lane-header,
+[data-kitchen-board] .kitchen-action[data-flux-button] {
+    background: var(--pos-kitchen-stage);
+    color: var(--pos-kitchen-stage-foreground);
+}
+
+[data-kitchen-board] .kitchen-action[data-flux-button] {
+    min-height: 48px;
+    height: auto;
+    padding-block: 12px;
+}
+
+[data-kitchen-board] .kitchen-action:hover:not(:disabled) { filter: brightness(0.94); }
+[data-kitchen-board] .kitchen-action:disabled { opacity: 0.65; }
+[data-kitchen-board] .kitchen-order-card { border-left: 5px solid var(--pos-kitchen-stage); }
+
+[data-kitchen-board] .kitchen-quantity,
+[data-kitchen-board] .kitchen-readonly {
+    background: color-mix(in srgb, var(--pos-kitchen-stage) 10%, var(--pos-surface));
+    color: var(--pos-kitchen-stage);
+}
+
+[data-kitchen-board] .kitchen-lane-list { padding: 3px; }
+[data-kitchen-board] .kitchen-order-card { overflow-wrap: anywhere; }
+
+@media (min-width: 1280px) and (min-height: 650px) {
+    [data-kitchen-board].kitchen-page {
+        height: 100dvh;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    [data-kitchen-board] > header { flex-shrink: 0; }
+
+    [data-kitchen-board] .kitchen-main {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    [data-kitchen-board] .kitchen-main > :not(.kitchen-grid) { flex-shrink: 0; }
+    [data-kitchen-board] .kitchen-grid { flex: 1; min-height: 0; }
+    [data-kitchen-board] .kitchen-lane { display: flex; flex-direction: column; min-height: 0; }
+    [data-kitchen-board] .kitchen-lane-header { flex-shrink: 0; min-height: 76px; }
+    [data-kitchen-board] .kitchen-lane-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+}

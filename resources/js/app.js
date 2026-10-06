@@ -11,3 +11,4 @@ import './product-editor';
 import './discount-editor';
 
 import './category-editor';
+import './kitchen-board';
