@@ -1,0 +1,40 @@
+[data-cashier-page] .cashier-sheet {
+    position: fixed;
+    inset: auto 0 0;
+    margin: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    max-height: 90dvh;
+    overflow: hidden;
+    border-radius: 1.5rem 1.5rem 0 0;
+}
+
+[data-cashier-page] .cashier-cart-form {
+    max-height: 90dvh;
+}
+
+@media (min-width: 1024px) {
+    [data-cashier-page] .cashier-desktop-cart {
+        top: 1rem;
+    }
+
+    [data-cashier-page] .cashier-desktop-cart .cashier-cart-form {
+        max-height: var(--cashier-cart-height, calc(100dvh - 2rem));
+    }
+}
+[data-cashier-page] input[data-flux-control],
+[data-cashier-page] select[data-flux-control],
+[data-cashier-page] button[data-flux-button] {
+    min-height: 44px;
+}
+
+[data-cashier-page] button[data-flux-button] {
+    min-width: 44px;
+}
+
+[data-cashier-page] > header a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}

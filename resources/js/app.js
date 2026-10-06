@@ -12,3 +12,4 @@ import './discount-editor';
 
 import './category-editor';
 import './kitchen-board';
+import './cashier-ui';
