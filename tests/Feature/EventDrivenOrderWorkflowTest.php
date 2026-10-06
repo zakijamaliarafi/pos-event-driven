@@ -223,6 +223,7 @@ test('only a waiter can verify a customer order from the waiter page', function 
         ->assertSee('Menunggu verifikasi')
         ->assertSee($order->order_number)
         ->assertSee('Tolak')
+        ->call('openConfirmation', $order->id, 'verify')
         ->call('verify', $order->id)
         ->assertHasNoErrors();
     expect($order->fresh()->status)->toBe('verifying');
