@@ -1,5 +1,9 @@
 <?php
 
+use App\Domain\Events\DomainEventRecovery;
+use App\Domain\Events\ProcessDomainEvent;
+use App\Domain\Inventory\InventoryEventConsumer;
+use App\Domain\Orders\OrderNotificationConsumer;
 use App\Domain\Orders\RecordCashPayment;
 use App\Domain\Orders\SubmitOrder;
 use App\Domain\Orders\TransitionOrder;
@@ -10,6 +14,7 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Contracts\Broadcasting\Broadcaster;
 use Illuminate\Contracts\Broadcasting\Factory;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -237,3 +242,147 @@ function drainRecoveryQueue(string $queue): void
 
     throw new RuntimeException('The Redis worker did not drain the domain outbox.');
 }
+
+test('Redis domain jobs exhaust five attempts per cycle and stop until an operator resumes the event', function () {
+    Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    $queue = 'pos-domain-failure-'.Str::lower(Str::random(12));
+    config(['pos.domain_queue' => $queue]);
+    $id = (string) Str::uuid();
+    $this->freezeTime();
+
+    try {
+        DB::table('domain_outbox')->insert([
+            'id' => $id, 'event_name' => 'OrderSubmitted', 'schema_version' => 1,
+            'aggregate_type' => Order::class, 'aggregate_id' => 999999,
+            'aggregate_version' => 1, 'correlation_id' => $id,
+            'payload' => json_encode(['order_id' => 999999]), 'occurred_at' => now(),
+        ]);
+
+        foreach ([60, 300, null] as $cycle => $recoveryDelay) {
+            Artisan::call('domain:dispatch-outbox');
+            $deliveryId = DB::table('domain_outbox')->where('id', $id)->value('active_delivery_id');
+            foreach ([1, 5, 15, 30, 0] as $attempt => $backoff) {
+                Artisan::call('queue:work', ['connection' => 'redis', '--queue' => $queue, '--once' => true]);
+                expect(DB::table('domain_outbox')->where('id', $id)->value('failed_cycles'))->toBe($attempt === 4 ? $cycle + 1 : $cycle);
+                if ($backoff > 0) {
+                    $this->travel($backoff)->seconds();
+                }
+            }
+            expect(DB::table('failed_jobs')->where('queue', $queue)->count())->toBe($cycle + 1);
+            if ($recoveryDelay !== null) {
+                $this->travel($recoveryDelay - 1)->seconds();
+                Artisan::call('domain:dispatch-outbox');
+                expect(Queue::connection('redis')->size($queue))->toBe(0);
+                $this->travel(1)->seconds();
+            }
+        }
+
+        $this->travel(1)->day();
+        Artisan::call('domain:dispatch-outbox');
+        expect(Queue::connection('redis')->size($queue))->toBe(0)
+            ->and(DB::table('domain_outbox')->where('id', $id)->value('quarantined_at'))->not->toBeNull();
+        // Replaying the original failed Redis payload cannot bypass quarantine.
+        $failed = DB::table('failed_jobs')->where('queue', $queue)->first();
+        Artisan::call('queue:retry', ['id' => [$failed->uuid]]);
+        Artisan::call('queue:work', ['connection' => 'redis', '--queue' => $queue, '--once' => true]);
+        expect(DB::table('domain_outbox')->where('id', $id)->value('failed_cycles'))->toBe(3);
+
+        // Repair the missing aggregate dependency, keeping the event payload unchanged.
+        DB::table('orders')->insert([
+            'id' => 999999, 'order_number' => 'RECOVERY-'.Str::uuid(), 'status' => 'cancelled',
+            'customer_name' => 'Restored order', 'total_amount' => 0, 'version' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        Artisan::call('domain:retry-event', ['eventId' => $id, '--reason' => 'Restored missing order']);
+        Artisan::call('domain:dispatch-outbox');
+        expect(DB::table('domain_outbox')->where('id', $id)->value('active_delivery_id'))->not->toBe($deliveryId);
+        Artisan::call('queue:work', ['connection' => 'redis', '--queue' => $queue, '--once' => true]);
+        expect(DB::table('domain_outbox')->where('id', $id)->value('processed_at'))->not->toBeNull()
+            ->and(DB::table('domain_outbox')->where('id', $id)->value('last_error'))->toBeNull()
+            ->and(DB::table('domain_event_receipts')->where('event_id', $id)->count())->toBe(4);
+    } finally {
+        $this->travelBack();
+        Queue::connection('redis')->clear($queue);
+        Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    }
+});
+
+test('operator retry locks the event and rechecks quarantine after a competing retry', function () {
+    Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    config(['database.connections.domain_retry_probe' => config('database.connections.'.config('database.default'))]);
+    $primary = DB::getDefaultConnection();
+    $probe = DB::connection('domain_retry_probe');
+    $probe->statement('SET SESSION innodb_lock_wait_timeout = 1');
+    $id = (string) Str::uuid();
+    $other = (string) Str::uuid();
+
+    try {
+        foreach ([$id, $other] as $index => $eventId) {
+            DB::table('domain_outbox')->insert([
+                'id' => $eventId, 'event_name' => 'RetryProbe', 'schema_version' => 1,
+                'aggregate_type' => 'retry-probe', 'aggregate_id' => $index + 1,
+                'aggregate_version' => 1, 'correlation_id' => $eventId, 'payload' => '{}',
+                'occurred_at' => now(), 'failed_cycles' => 3, 'quarantined_at' => now(),
+            ]);
+        }
+        DB::connection($primary)->beginTransaction();
+        DB::connection($primary)->table('domain_outbox')->where('id', $id)->lockForUpdate()->first();
+        DB::setDefaultConnection('domain_retry_probe');
+        expect(fn () => app(DomainEventRecovery::class)->retry($id, 'Competing retry'))
+            ->toThrow(QueryException::class);
+        app(DomainEventRecovery::class)->retry($other, 'Unrelated retry');
+        DB::setDefaultConnection($primary);
+        DB::connection($primary)->rollBack();
+
+        app(DomainEventRecovery::class)->retry($id, 'First successful retry');
+        DB::setDefaultConnection('domain_retry_probe');
+        expect(fn () => app(DomainEventRecovery::class)->retry($id, 'Late competing retry'))
+            ->toThrow(InvalidArgumentException::class);
+        expect($probe->table('domain_outbox')->where('id', $other)->value('quarantined_at'))->toBeNull();
+    } finally {
+        DB::setDefaultConnection($primary);
+        if (DB::connection($primary)->transactionLevel() > 0) {
+            DB::connection($primary)->rollBack();
+        }
+        DB::purge('domain_retry_probe');
+        Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    }
+});
+
+test('delivery identity is rechecked between committed consumers and before final completion', function (string $boundary, int $receiptCount) {
+    Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    $id = (string) Str::uuid();
+    $oldDelivery = (string) Str::uuid();
+    $newDelivery = (string) Str::uuid();
+    $enabled = true;
+
+    try {
+        DB::table('domain_outbox')->insert([
+            'id' => $id, 'event_name' => 'BoundaryProbe', 'schema_version' => 1,
+            'aggregate_type' => 'boundary-probe', 'aggregate_id' => 1, 'aggregate_version' => 1,
+            'correlation_id' => $id, 'payload' => '{}', 'occurred_at' => now(), 'active_delivery_id' => $oldDelivery,
+        ]);
+        DB::listen(function (QueryExecuted $query) use (&$enabled, $boundary, $id, $newDelivery): void {
+            if (! $enabled || ! str_starts_with($query->sql, 'insert into `domain_event_receipts`')
+                || ! in_array($boundary, $query->bindings, true)) {
+                return;
+            }
+            $enabled = false;
+            DB::afterCommit(fn () => DB::table('domain_outbox')->where('id', $id)->update(['active_delivery_id' => $newDelivery]));
+        });
+        app(ProcessDomainEvent::class)->process($id, $oldDelivery);
+        expect(DB::table('domain_event_receipts')->where('event_id', $id)->count())->toBe($receiptCount)
+            ->and(DB::table('domain_outbox')->where('id', $id)->value('processed_at'))->toBeNull();
+        (new DeliverDomainEvent($id, $oldDelivery))->failed(new RuntimeException('Stale boundary callback'));
+        expect(DB::table('domain_outbox')->where('id', $id)->value('failed_cycles'))->toBe(0);
+        app(ProcessDomainEvent::class)->process($id, $newDelivery);
+        expect(DB::table('domain_event_receipts')->where('event_id', $id)->count())->toBe(4)
+            ->and(DB::table('domain_outbox')->where('id', $id)->value('processed_at'))->not->toBeNull();
+    } finally {
+        $enabled = false;
+        Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    }
+})->with([
+    [InventoryEventConsumer::class, 1],
+    [OrderNotificationConsumer::class, 4],
+]);
