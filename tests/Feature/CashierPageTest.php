@@ -31,7 +31,7 @@ function cashierPageOrder(Product $product, array $attributes = []): Order
         'order_type' => 'dine_in', 'table_number' => 4,
         'customer_name' => 'Pelanggan kasir',
         'cart' => [['id' => $product->id, 'qty' => 2]],
-    ], cashierId: (int) auth()->id());
+    ], idempotencyKey: (string) Str::uuid(), cashierId: (int) auth()->id());
     $order->forceFill($attributes)->save();
 
     return $order->fresh();
@@ -293,6 +293,8 @@ test('a removed order retains useful confirmation errors', function () {
     $product = Product::factory()->withRecipe(5)->create();
     $order = cashierPageOrder($product);
     $page = Livewire::test('pages::order.create')->call('openCancellation', $order->id);
+    // Simulate a removed legacy order, which predates the retained submission ledger.
+    DB::table('order_submissions')->where('order_id', $order->id)->delete();
     $order->delete();
     $page->call('cancel', $order->id)->assertHasErrors('confirmation')->assertSet('showConfirmation', true)
         ->assertSee('Pesanan tidak ditemukan.')->call('closeConfirmation')

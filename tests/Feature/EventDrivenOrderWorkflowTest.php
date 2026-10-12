@@ -46,7 +46,7 @@ test('cashier sale reserves only recipe ingredient stock then consumes it once o
         'table_number' => 3,
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 2]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
 
     expect($order->status)->toBe('awaiting_inventory');
     drainDomainEvents();
@@ -82,7 +82,7 @@ test('customer order reaches the kitchen only after waiter verification consumes
         'table_number' => 3,
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 2]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
 
     expect($order->expires_at)->toBeNull();
     drainDomainEvents();
@@ -130,7 +130,7 @@ test('waiter rejection releases customer reservations and prevents verification'
         'table_number' => 1,
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     drainDomainEvents();
 
     app(TransitionOrder::class)->reject($order->id);
@@ -149,7 +149,7 @@ test('customer cancellation before verification releases reserved stock once', f
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     drainDomainEvents();
 
     app(TransitionOrder::class)->cancel($order->id);
@@ -177,7 +177,7 @@ test('customer handoffs notify waiter kitchen and cashier once each', function (
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     drainDomainEvents();
     expect($waiter->notifications()->count())->toBe(1)
         ->and($cook->notifications()->count())->toBe(0)
@@ -215,7 +215,7 @@ test('only a waiter can verify a customer order from the waiter page', function 
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     drainDomainEvents();
 
     $this->actingAs($cashier)->get(route('waiter.view'))->assertForbidden();
@@ -236,7 +236,7 @@ test('backfill moves legacy unpaid customer orders to verification once and clea
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     drainDomainEvents();
     $order->update(['status' => 'waiting_payment', 'expires_at' => now()->addMinutes(5)]);
 
@@ -256,7 +256,7 @@ test('backfill clears a legacy customer deadline while stock is pending only onc
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     $order->update(['expires_at' => now()->addMinutes(5)]);
 
     Artisan::call('orders:backfill-customer-verification', ['--no-interaction' => true]);
@@ -273,8 +273,8 @@ test('backfill clears a legacy customer deadline while stock is pending only onc
 test('unpaid customer orders do not expire while cashier sales still do', function () {
     $product = Product::factory()->withRecipe(2)->create();
     $input = ['order_type' => 'dine_in', 'table_number' => 1, 'customer_name' => 'Customer', 'cart' => [['id' => $product->id, 'qty' => 1]]];
-    $customerOrder = app(SubmitOrder::class)->handle($input, deviceId: (string) Str::uuid());
-    $cashierOrder = app(SubmitOrder::class)->handle($input);
+    $customerOrder = app(SubmitOrder::class)->handle($input, idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
+    $cashierOrder = app(SubmitOrder::class)->handle($input, idempotencyKey: (string) Str::uuid());
     drainDomainEvents();
 
     $customerOrder->update(['expires_at' => now()->subMinute()]);
@@ -294,7 +294,7 @@ test('duplicate delivery does not reserve stock twice', function () {
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     $eventId = DB::table('domain_outbox')->where('event_name', 'OrderSubmitted')->value('id');
 
     app(ProcessDomainEvent::class)->process($eventId);
@@ -311,7 +311,7 @@ test('unpaid orders expire and release ingredient stock', function () {
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     drainDomainEvents();
     $order->update(['expires_at' => now()->subMinute()]);
 
@@ -332,8 +332,8 @@ test('competing orders cannot reserve the same final ingredient portion', functi
         'cart' => [['id' => $product->id, 'qty' => 1]],
     ];
 
-    $first = app(SubmitOrder::class)->handle($input);
-    $second = app(SubmitOrder::class)->handle($input);
+    $first = app(SubmitOrder::class)->handle($input, idempotencyKey: (string) Str::uuid());
+    $second = app(SubmitOrder::class)->handle($input, idempotencyKey: (string) Str::uuid());
     drainDomainEvents();
 
     $statuses = [$first->fresh()->status, $second->fresh()->status];
@@ -350,7 +350,7 @@ test('cash payment retry records one payment and invalid transition is rejected'
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     drainDomainEvents();
 
     app(RecordCashPayment::class)->handle($order->id, $cashier->id, 'same-payment');
@@ -369,7 +369,7 @@ test('an outbox event remains pending while the dispatcher is not running', func
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
 
     expect(DB::table('domain_outbox')->where('event_name', 'OrderSubmitted')->whereNull('processed_at')->count())->toBe(1)
         ->and($order->fresh()->status)->toBe('awaiting_inventory');
@@ -386,7 +386,7 @@ test('reordered events wait for the preceding aggregate version', function () {
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     app(TransitionOrder::class)->cancel($order->id);
 
     $submittedId = DB::table('domain_outbox')->where('event_name', 'OrderSubmitted')->value('id');
@@ -412,7 +412,7 @@ test('recipe changes after submission do not change reserved ingredient quantiti
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 2]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
 
     $recipe->update(['quantity_required' => 4]);
     drainDomainEvents();
@@ -428,7 +428,7 @@ test('cancelling an unpaid reserved order releases its stock once', function () 
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     drainDomainEvents();
 
     app(TransitionOrder::class)->cancel($order->id);
@@ -453,7 +453,7 @@ test('paid and ready orders notify the kitchen and waiter once', function () {
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     drainDomainEvents();
     app(RecordCashPayment::class)->handle($order->id, $cashier->id, 'cash-one');
     drainDomainEvents();

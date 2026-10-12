@@ -36,12 +36,12 @@ test('customer private channels are limited to orders from their device cookie',
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: $ownDeviceId);
+    ], idempotencyKey: (string) Str::uuid(), deviceId: $ownDeviceId);
     $otherOrder = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway',
         'customer_name' => 'Other customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: $otherDeviceId);
+    ], idempotencyKey: (string) Str::uuid(), deviceId: $otherDeviceId);
 
     $request = fn (Order $order): array => [
         'socket_id' => '123.456',

@@ -3,6 +3,8 @@
 use App\Domain\Catalog\ProductAvailability;
 use App\Domain\Orders\RecordCashPayment;
 use App\Domain\Orders\SubmitOrder;
+use App\Domain\Orders\SubmissionConflict;
+use App\Livewire\Concerns\RecoversOrderSubmissions;
 use App\Domain\Orders\TransitionOrder;
 use App\Models\Order;
 use App\Models\Product;
@@ -20,6 +22,7 @@ use Livewire\WithPagination;
 new class extends Component
 {
     use WithPagination;
+    use RecoversOrderSubmissions;
 
     private const ACTIVE_STATUSES = ['awaiting_inventory', 'awaiting_verification', 'verifying', 'waiting_payment', 'pending', 'preparing', 'ready', 'awaiting_payment'];
 
@@ -64,6 +67,7 @@ new class extends Component
 
     public function mount(): void
     {
+        $this->resetSubmission();
         $this->authorizeCashier();
     }
 
@@ -139,11 +143,15 @@ new class extends Component
         $this->resetValidation('cart');
     }
 
-    public function submit(SubmitOrder $orders, ProductAvailability $availability): void
+    public function submit(SubmitOrder $orders): void
     {
         $this->authorizeCashier();
         $this->resetValidation();
+        $this->submissionNotice = '';
         try {
+            if ($this->submissionKey === '') {
+                throw ValidationException::withMessages(['cart' => __('orders.errors.submission_key_invalid')]);
+            }
             $cart = [];
             foreach ($this->quantities as $id => $value) {
                 $quantity = $this->validQuantity($value);
@@ -169,14 +177,13 @@ new class extends Component
                 'customer_name' => ['required', 'string', 'max:100'],
                 'customer_phone' => ['nullable', 'string', 'max:20'],
             ])->validate();
-            $products = Product::with('recipes.inventoryItem')->whereIn('id', array_column($cart, 'id'))->get()->keyBy('id');
-            foreach ($cart as $line) {
-                $product = $products->get($line['id']);
-                if (! $product || $availability->availableQuantity($product) < $line['qty']) {
-                    throw ValidationException::withMessages(['cart' => __('orders.errors.cart_changed')]);
-                }
-            }
-            $order = $orders->handle($data + ['cart' => $cart], cashierId: (int) Auth::id());
+            $order = $orders->handle($data + ['cart' => $cart], $this->submissionKey, cashierId: (int) Auth::id());
+        } catch (SubmissionConflict $exception) {
+            $this->recoveryOrderId = $exception->orderId;
+            $this->addError('cart', $exception->getMessage());
+            $this->dispatch('cashier-checkout-invalid');
+
+            return;
         } catch (ValidationException $exception) {
             foreach ($exception->errors() as $field => $messages) {
                 $this->addError($field, $messages[0]);
@@ -185,6 +192,7 @@ new class extends Component
 
             return;
         }
+        $this->resetSubmission();
         $this->quantities = [];
         $this->showCart = false;
         $this->workspace = 'orders';
@@ -192,6 +200,28 @@ new class extends Component
         $this->resetOrderFilters();
         $this->message = __('orders.messages.cashier_submitted', ['number' => $order->order_number]);
         $this->dispatch('cashier-sale-submitted', orderId: $order->id);
+    }
+
+    protected function submissionActor(): array
+    {
+        $this->authorizeCashier();
+
+        return ['cashierId' => (int) Auth::id(), 'deviceId' => null];
+    }
+
+    protected function showPreviousSubmission(Order $order): void
+    {
+        $this->submittedOrderId = $order->id;
+        $this->showCart = false;
+        $this->workspace = 'orders';
+        $this->orderSearch = $order->order_number;
+        $this->orderFilter = 'all';
+        $this->resetPage('ordersPage');
+    }
+
+    protected function submissionInvalidEvent(): string
+    {
+        return 'cashier-checkout-invalid';
     }
 
     public function openPayment(int $orderId): void
@@ -336,7 +366,7 @@ new class extends Component
             ? ['awaiting_inventory', 'waiting_payment'] : ['awaiting_inventory', 'awaiting_verification'], true);
     }
 
-    public function with(ProductAvailability $availability): array
+    public function with(ProductAvailability $availability, SubmitOrder $orders): array
     {
         $this->authorizeCashier();
         $catalog = Product::with(['category', 'discounts', 'recipes.inventoryItem'])->orderBy('name')->orderBy('id')->get();
@@ -377,6 +407,7 @@ new class extends Component
         $confirmationEligible = $confirmationOrder && ($this->confirmationAction === 'pay' ? $this->canPay($confirmationOrder) : $this->canCancel($confirmationOrder));
 
         return [
+            'recoveryOrder' => $this->submissionRecoveryOrder($orders),
             'products' => $products, 'categories' => $categories, 'menuCount' => $available->count(),
             'availableQuantities' => $availableQuantities, 'cartRows' => $cartRows,
             'cartTotal' => (int) $cartRows->sum('subtotal'), 'cartCount' => (int) $cartRows->sum(fn ($row) => ($row['quantity'] ?? 0) <= 100 ? $row['quantity'] : 0),
@@ -396,20 +427,21 @@ new class extends Component
             <div><p class="text-sm font-semibold text-pos-link">Kasir</p><h1 class="mt-1 text-2xl font-bold sm:text-3xl">Penjualan dan pembayaran</h1></div>
             <p class="max-w-md text-sm text-pos-muted">Kirim penjualan, tunggu stok dicadangkan, lalu catat pembayaran tunai sebelum pesanan disiapkan.</p>
         </div>
+        <x-order-submission-summary :order="$recoveryOrder" />
         <div role="status" aria-live="polite" aria-atomic="true" @class(['rounded-xl border border-pos-border bg-pos-soft p-4 text-sm', 'hidden' => $message === ''])>{{ $message }}</div>
         <div class="flex flex-wrap gap-2" role="tablist" aria-label="Ruang kerja kasir" data-cashier-tabs>
             @foreach(['sale' => 'Penjualan baru', 'orders' => 'Pesanan aktif'] as $tab => $label)
-                <button type="button" id="cashier-{{ $tab }}-tab" wire:key="cashier-tab-{{ $tab }}" role="tab" aria-controls="cashier-{{ $tab }}-panel" aria-selected="{{ $workspace === $tab ? 'true' : 'false' }}" tabindex="{{ $workspace === $tab ? '0' : '-1' }}" wire:click="setWorkspace('{{ $tab }}')" wire:loading.attr="disabled" wire:target="submit,pay,cancel" @class(['min-h-11 rounded-xl px-4 py-3 text-sm font-semibold', 'bg-pos-action text-pos-action-foreground' => $workspace === $tab, 'border border-pos-border bg-pos-surface hover:bg-pos-soft' => $workspace !== $tab])>{{ $label }} @if($tab === 'orders')<span class="ml-1 tabular-nums">({{ $activeCount }})</span><span class="ml-2 text-xs">{{ $payableCount }} perlu pembayaran</span>@endif</button>
+                <button type="button" id="cashier-{{ $tab }}-tab" wire:key="cashier-tab-{{ $tab }}" role="tab" aria-controls="cashier-{{ $tab }}-panel" aria-selected="{{ $workspace === $tab ? 'true' : 'false' }}" tabindex="{{ $workspace === $tab ? '0' : '-1' }}" wire:click="setWorkspace('{{ $tab }}')" wire:loading.attr="disabled" wire:target="checkSubmission,viewPreviousSubmission,startNewSubmission,submit,pay,cancel" @class(['min-h-11 rounded-xl px-4 py-3 text-sm font-semibold', 'bg-pos-action text-pos-action-foreground' => $workspace === $tab, 'border border-pos-border bg-pos-surface hover:bg-pos-soft' => $workspace !== $tab])>{{ $label }} @if($tab === 'orders')<span class="ml-1 tabular-nums">({{ $activeCount }})</span><span class="ml-2 text-xs">{{ $payableCount }} perlu pembayaran</span>@endif</button>
             @endforeach
         </div>
         <section id="cashier-sale-panel" role="tabpanel" aria-labelledby="cashier-sale-tab" @if($workspace !== 'sale') hidden @endif>
             <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
                 <section class="min-w-0 space-y-4" aria-labelledby="cashier-menu-heading">
                     <div class="flex flex-wrap items-center justify-between gap-2"><h2 id="cashier-menu-heading" class="text-lg font-bold">Pilih menu</h2><p class="text-sm text-pos-muted">{{ $products->count() }} menu tersedia</p></div>
-                    <flux:input wire:model.live.debounce.300ms="search" label="Cari menu" placeholder="Ketik nama menu…" type="search" class="min-h-11" wire:loading.attr="disabled" wire:target="submit" />
+                    <flux:input wire:model.live.debounce.300ms="search" label="Cari menu" placeholder="Ketik nama menu…" type="search" class="min-h-11" wire:loading.attr="disabled" wire:target="checkSubmission,viewPreviousSubmission,startNewSubmission,submit" />
                     <div class="flex flex-wrap gap-2" role="group" aria-label="Kategori menu">
                         @foreach(collect([['id' => '', 'name' => 'Semua']])->concat($categories->map(fn ($category) => ['id' => (string) $category->id, 'name' => $category->name])) as $category)
-                            <button type="button" wire:key="cashier-category-{{ $category['id'] }}" wire:click="$set('categoryId', '{{ $category['id'] }}')" wire:loading.attr="disabled" wire:target="submit" aria-pressed="{{ $categoryId === $category['id'] ? 'true' : 'false' }}" @class(['min-h-11 max-w-full break-words rounded-full border px-4 py-2 text-sm font-medium', 'border-pos-action bg-pos-action text-pos-action-foreground' => $categoryId === $category['id'], 'border-pos-border bg-pos-surface hover:bg-pos-soft' => $categoryId !== $category['id']])>{{ $category['name'] }}</button>
+                            <button type="button" wire:key="cashier-category-{{ $category['id'] }}" wire:click="$set('categoryId', '{{ $category['id'] }}')" wire:loading.attr="disabled" wire:target="checkSubmission,viewPreviousSubmission,startNewSubmission,submit" aria-pressed="{{ $categoryId === $category['id'] ? 'true' : 'false' }}" @class(['min-h-11 max-w-full break-words rounded-full border px-4 py-2 text-sm font-medium', 'border-pos-action bg-pos-action text-pos-action-foreground' => $categoryId === $category['id'], 'border-pos-border bg-pos-surface hover:bg-pos-soft' => $categoryId !== $category['id']])>{{ $category['name'] }}</button>
                         @endforeach
                     </div>
                     <p wire:loading.delay wire:target="search,categoryId,resetFilters" role="status" class="text-sm text-pos-muted">Mencari menu…</p>
@@ -424,7 +456,7 @@ new class extends Component
                         @endforelse
                     </div>
                 </section>
-                <aside class="cashier-desktop-cart hidden min-w-0 overflow-hidden rounded-2xl border border-pos-border bg-pos-surface shadow-sm lg:sticky lg:block" aria-label="Keranjang penjualan"><x-cashier-cart context="desktop" :rows="$cartRows" :total="$cartTotal" :count="$cartCount" :blocked="$cartBlocked" :order-type="$orderType" /></aside>
+                <aside class="cashier-desktop-cart hidden min-w-0 overflow-hidden rounded-2xl border border-pos-border bg-pos-surface shadow-sm lg:sticky lg:block" aria-label="Keranjang penjualan"><x-cashier-cart :recovery-order="$recoveryOrder" context="desktop" :rows="$cartRows" :total="$cartTotal" :count="$cartCount" :blocked="$cartBlocked" :order-type="$orderType" /></aside>
             </div>
             <div class="fixed inset-x-0 bottom-0 z-20 border-t border-pos-border bg-pos-surface p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] lg:hidden"><flux:button variant="primary" class="min-h-12 w-full whitespace-normal" wire:click="$set('showCart', true)" data-cashier-open="cart"><span>{{ $cartRows->count() }} menu · {{ $cartCount }} produk</span><span class="mx-2">·</span><span>Lihat keranjang — <x-cashier-money :hundredths="$cartTotal" /></span></flux:button></div>
         </section>
@@ -444,7 +476,7 @@ new class extends Component
             <div class="flex flex-wrap items-center justify-between gap-3 border-t border-pos-border pt-4"><p role="status" class="text-sm text-pos-muted">Menampilkan {{ $orderRows->firstItem() ?? 0 }} sampai {{ $orderRows->lastItem() ?? 0 }} dari {{ $orderRows->total() }} pesanan</p><nav aria-label="Halaman pesanan" class="flex gap-2"><flux:button wire:click="previousPage('ordersPage')" wire:loading.attr="disabled" :disabled="$orderRows->onFirstPage()" class="min-h-11">Sebelumnya</flux:button><flux:button wire:click="nextPage('ordersPage')" wire:loading.attr="disabled" :disabled="! $orderRows->hasMorePages()" class="min-h-11">Berikutnya</flux:button></nav></div>
         </section>
     </main>
-    <flux:modal name="cashier-cart" wire:model.self="showCart" :dismissible="false" :closable="false" data-cashier-cart class="cashier-sheet border border-pos-border bg-pos-surface! p-0! text-pos-ink"><x-cashier-cart context="mobile" :rows="$cartRows" :total="$cartTotal" :count="$cartCount" :blocked="$cartBlocked" :order-type="$orderType" /></flux:modal>
+    <flux:modal name="cashier-cart" wire:model.self="showCart" :dismissible="false" :closable="false" data-cashier-cart class="cashier-sheet border border-pos-border bg-pos-surface! p-0! text-pos-ink"><x-cashier-cart :recovery-order="$recoveryOrder" context="mobile" :rows="$cartRows" :total="$cartTotal" :count="$cartCount" :blocked="$cartBlocked" :order-type="$orderType" /></flux:modal>
     <flux:modal name="cashier-confirmation" wire:model.self="showConfirmation" :dismissible="false" :closable="false" data-cashier-confirmation class="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg overflow-hidden rounded-2xl border border-pos-border bg-pos-surface! p-0! text-pos-ink">
         <form wire:submit="{{ $confirmationAction === 'pay' ? 'pay' : 'cancel' }}({{ $confirmationOrderId ?? 0 }})" class="flex max-h-[calc(100dvh-2rem)] flex-col" data-cashier-confirmation-form>
             <div class="shrink-0 border-b border-pos-border p-5"><h2 id="cashier-confirmation-heading" tabindex="-1" class="text-xl font-bold">{{ $confirmationAction === 'pay' ? 'Catat pembayaran tunai?' : 'Batalkan pesanan?' }}</h2><p id="cashier-confirmation-description" class="mt-2 break-all text-sm text-pos-muted">{{ $confirmationOrderNumber }}</p></div>

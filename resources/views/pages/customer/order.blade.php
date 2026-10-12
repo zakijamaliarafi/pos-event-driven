@@ -2,6 +2,8 @@
 
 use App\Domain\Catalog\ProductAvailability;
 use App\Domain\Orders\SubmitOrder;
+use App\Domain\Orders\SubmissionConflict;
+use App\Livewire\Concerns\RecoversOrderSubmissions;
 use App\Domain\Orders\TransitionOrder;
 use App\Models\Order;
 use App\Models\Product;
@@ -14,6 +16,8 @@ use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component {
+    use RecoversOrderSubmissions;
+
     private const TERMINAL_STATUSES = ['completed', 'rejected', 'expired', 'cancelled'];
 
     #[Locked]
@@ -37,6 +41,7 @@ new class extends Component {
 
     public function mount(): void
     {
+        $this->resetSubmission();
         $stored = request()->cookie('pos_device');
         $this->deviceId = is_string($stored) && Str::isUuid($stored) ? $stored : (string) Str::uuid();
         Cookie::queue('pos_device', $this->deviceId, 1440);
@@ -85,11 +90,15 @@ new class extends Component {
         $this->resetValidation();
     }
 
-    public function submit(SubmitOrder $orders, ProductAvailability $availability): void
+    public function submit(SubmitOrder $orders): void
     {
         $this->resetValidation();
+        $this->submissionNotice = '';
 
         try {
+            if ($this->submissionKey === '') {
+                throw ValidationException::withMessages(['cart' => __('orders.errors.submission_key_invalid')]);
+            }
             $cart = [];
             foreach ($this->quantities as $id => $quantity) {
                 $parsed = $this->validQuantity($quantity);
@@ -116,15 +125,13 @@ new class extends Component {
                 'customer_phone' => ['nullable', 'string', 'max:20'],
             ])->validate();
 
-            $products = Product::with('recipes.inventoryItem')->whereIn('id', array_column($cart, 'id'))->get()->keyBy('id');
-            foreach ($cart as $line) {
-                $product = $products->get($line['id']);
-                if (! $product || $availability->availableQuantity($product) < $line['qty']) {
-                    throw ValidationException::withMessages(['cart' => __('orders.errors.cart_changed')]);
-                }
-            }
+            $order = $orders->handle($data + ['order_type' => 'dine_in', 'cart' => $cart], $this->submissionKey, deviceId: $this->deviceId);
+        } catch (SubmissionConflict $exception) {
+            $this->recoveryOrderId = $exception->orderId;
+            $this->addError('cart', $exception->getMessage());
+            $this->dispatch('customer-checkout-invalid');
 
-            $order = $orders->handle($data + ['order_type' => 'dine_in', 'cart' => $cart], deviceId: $this->deviceId);
+            return;
         } catch (ValidationException $exception) {
             foreach ($exception->errors() as $field => $messages) {
                 $this->addError($field, $messages[0]);
@@ -134,12 +141,30 @@ new class extends Component {
             return;
         }
 
+        $this->resetSubmission();
         $this->quantities = [];
         $this->submittedOrderId = $order->id;
         $this->showCart = false;
         $this->showTracking = true;
         $this->message = __('orders.messages.customer_submitted', ['number' => $order->order_number]);
         $this->dispatch('customer-order-submitted', orderId: $order->id);
+    }
+
+    protected function submissionActor(): array
+    {
+        return ['cashierId' => null, 'deviceId' => $this->deviceId];
+    }
+
+    protected function showPreviousSubmission(Order $order): void
+    {
+        $this->submittedOrderId = $order->id;
+        $this->showCart = false;
+        $this->showTracking = true;
+    }
+
+    protected function submissionInvalidEvent(): string
+    {
+        return 'customer-checkout-invalid';
     }
 
     public function cancel(int $orderId, TransitionOrder $orders): void
@@ -166,7 +191,7 @@ new class extends Component {
         return $quantity === false ? null : $quantity;
     }
 
-    public function with(ProductAvailability $availability): array
+    public function with(ProductAvailability $availability, SubmitOrder $orders): array
     {
         $catalog = Product::with(['category', 'discounts', 'recipes.inventoryItem'])->orderBy('name')->orderBy('id')->get();
         $availableQuantities = $catalog->mapWithKeys(fn (Product $product): array => [$product->id => $availability->availableQuantity($product)]);
@@ -211,6 +236,7 @@ new class extends Component {
         $historyOrders = (clone $owned)->whereIn('status', self::TERMINAL_STATUSES)->latest()->orderByDesc('id')->limit(10)->get();
 
         return [
+            'recoveryOrder' => $this->submissionRecoveryOrder($orders),
             'products' => $products,
             'categories' => $categories,
             'availableQuantities' => $availableQuantities,
@@ -280,7 +306,7 @@ new class extends Component {
                                     @if($quantity > 0)
                                         <x-customer-quantity :product-id="$product->id" :name="$product->name" :quantity="$quantity" :limit="min(100, $availableQuantities[$product->id])" />
                                     @else
-                                        <flux:button wire:click="increment({{ $product->id }})" wire:loading.attr="disabled" wire:target="submit,increment({{ $product->id }})" class="min-h-11 w-full" aria-label="Tambah {{ $product->name }} ke keranjang">Tambah</flux:button>
+                                        <flux:button wire:click="increment({{ $product->id }})" wire:loading.attr="disabled" wire:target="checkSubmission,viewPreviousSubmission,startNewSubmission,submit,increment({{ $product->id }})" class="min-h-11 w-full" aria-label="Tambah {{ $product->name }} ke keranjang">Tambah</flux:button>
                                     @endif
                                 </div>
                             </div>
@@ -299,13 +325,13 @@ new class extends Component {
             </section>
 
             <aside id="desktop-cart" class="sticky hidden min-w-0 overflow-hidden rounded-2xl border border-pos-border bg-pos-surface shadow-sm lg:block" aria-labelledby="desktop-cart-heading">
-                <x-customer-cart context="desktop" :rows="$cartRows" :total="$cartTotal" :blocked="$cartBlocked" :linked-table="$linkedTableNumber" />
+                <x-customer-cart :recovery-order="$recoveryOrder" context="desktop" :rows="$cartRows" :total="$cartTotal" :blocked="$cartBlocked" :linked-table="$linkedTableNumber" />
             </aside>
         </div>
     </main>
 
     <flux:modal name="customer-cart" wire:model.self="showCart" :closable="false" class="customer-sheet bg-pos-surface! p-0!" data-customer-cart aria-labelledby="mobile-cart-heading">
-        <x-customer-cart context="mobile" :rows="$cartRows" :total="$cartTotal" :blocked="$cartBlocked" :linked-table="$linkedTableNumber" />
+        <x-customer-cart :recovery-order="$recoveryOrder" context="mobile" :rows="$cartRows" :total="$cartTotal" :blocked="$cartBlocked" :linked-table="$linkedTableNumber" />
     </flux:modal>
 
     <flux:modal name="customer-tracking" wire:model.self="showTracking" :closable="false" class="customer-sheet customer-tracking bg-pos-surface! p-0!" data-customer-tracking aria-labelledby="customer-tracking-heading">
@@ -315,6 +341,7 @@ new class extends Component {
                 <flux:modal.close><flux:button square variant="ghost" icon="x-mark" class="min-h-11 min-w-11" aria-label="Tutup pesanan" /></flux:modal.close>
             </div>
             <div class="min-h-0 space-y-5 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5" aria-live="polite">
+                <x-order-submission-summary :order="$recoveryOrder" />
                 @error('order')<p role="alert" class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-3 text-sm text-pos-danger">{{ $message }}</p>@enderror
                 <h3 class="font-semibold">Pesanan aktif ({{ $activeOrders->count() }})</h3>
                 @forelse($activeOrders as $order)

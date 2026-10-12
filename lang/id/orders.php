@@ -20,6 +20,8 @@ return [
         'takeaway' => 'Bawa pulang',
     ],
     'messages' => [
+        'submission_not_found' => 'Belum ada pesanan tercatat untuk pengiriman ini',
+        'submission_found' => 'Pengiriman ini sudah tercatat. Periksa pesanan sebelumnya sebelum memulai pesanan baru.',
         'customer_submitted' => 'Pesanan :number dikirim. Pramusaji akan memverifikasinya sebelum disiapkan. Bayar tunai di kasir setelah selesai makan.',
         'customer_cancelled' => 'Pesanan dibatalkan. Stok yang dicadangkan akan segera dikembalikan.',
         'cashier_submitted' => 'Pesanan :number dikirim. Catat pembayaran tunai setelah stok dicadangkan.',
@@ -34,6 +36,9 @@ return [
         'marked_ready' => 'Pesanan ditandai siap disajikan.',
     ],
     'errors' => [
+        'submission_key_invalid' => 'Sesi pengiriman tidak valid. Muat ulang halaman sebelum mengirim pesanan.',
+        'submission_unavailable' => 'Pengiriman ini tidak dapat diakses. Muat ulang halaman sebelum mengirim pesanan.',
+        'submission_conflict' => 'Pengiriman ini sudah menjadi pesanan dengan rincian berbeda. Lihat pesanan sebelumnya atau pilih Mulai pesanan baru untuk mengirim perubahan.',
         'empty_cart' => 'Pilih setidaknya satu produk.',
         'invalid_quantity' => 'Jumlah produk harus berupa bilangan bulat dari 1 sampai 100. Hapus pilihan yang tidak valid lalu tambahkan kembali.',
         'cart_changed' => 'Ketersediaan menu berubah. Kurangi jumlah atau hapus produk yang tidak tersedia sebelum mengirim.',

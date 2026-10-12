@@ -25,7 +25,7 @@ function submitBroadcastOrder(bool $customer = false): Order
         'order_type' => 'takeaway',
         'customer_name' => 'Broadcast customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: $customer ? (string) Str::uuid() : null);
+    ], idempotencyKey: (string) Str::uuid(), deviceId: $customer ? (string) Str::uuid() : null);
 }
 
 function projectBroadcastOrder(Order $order): object

@@ -216,7 +216,7 @@ test('partial inventory effects survive quarantine and resume without duplicate 
     $ingredient = $product->recipes()->first()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Partial recovery', 'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     $id = DB::table('domain_outbox')->where('event_name', 'OrderSubmitted')->value('id');
     // A projection insert fails after inventory and order consumers have committed.
     config(['broadcasting.default' => str_repeat('x', 51)]);
@@ -346,7 +346,7 @@ test('payment handoff recovers without duplicate cash payment stock use or kitch
     User::factory()->create()->assignRole('kitchen');
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Payment recovery', 'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     for ($pass = 0; $pass < 5; $pass++) {
         foreach (DB::table('domain_outbox')->whereNull('processed_at')->orderBy('sequence')->pluck('id') as $eventId) {
             app(ProcessDomainEvent::class)->process($eventId);

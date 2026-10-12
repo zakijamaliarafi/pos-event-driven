@@ -101,7 +101,7 @@ test('invalid or missing recipes have no availability and cannot be submitted', 
     expect(fn () => app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]))->toThrow(ValidationException::class);
+    ], idempotencyKey: (string) Str::uuid()))->toThrow(ValidationException::class);
 
     expect(Order::count())->toBe(0)->and(DB::table('domain_outbox')->count())->toBe(0);
 })->with(['no recipe', 'deleted ingredient', 'zero requirement']);
@@ -110,7 +110,7 @@ test('missing products cannot be submitted', function () {
     expect(fn () => app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Customer',
         'cart' => [['id' => 99999, 'qty' => 1]],
-    ]))->toThrow(ValidationException::class);
+    ], idempotencyKey: (string) Str::uuid()))->toThrow(ValidationException::class);
 
     expect(Order::count())->toBe(0)->and(DB::table('domain_outbox')->count())->toBe(0);
 });
@@ -143,7 +143,7 @@ test('new orders reserve and consume only ingredients regardless of legacy produ
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 29]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     drainIngredientInventoryEvents();
 
     expect($order->fresh()->status)->toBe('awaiting_verification')
@@ -173,7 +173,7 @@ test('shared ingredient requirements are aggregated and rejection leaves no part
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Customer',
         'cart' => [['id' => $first->id, 'qty' => 1], ['id' => $second->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     drainIngredientInventoryEvents();
 
     expect($order->fresh()->status)->toBe('rejected')
@@ -190,7 +190,7 @@ test('shared ingredient requirements create one reservation with the summed quan
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Customer',
         'cart' => $products->map(fn (Product $product): array => ['id' => $product->id, 'qty' => 2])->all(),
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     drainIngredientInventoryEvents();
 
     expect($order->fresh()->status)->toBe('waiting_payment')
@@ -203,7 +203,7 @@ test('stock changes after submission are checked when reserving ingredients', fu
     $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Customer', 'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     if ($change === 'delete') {
         $ingredient->delete();
     } else {
@@ -219,7 +219,7 @@ test('awaiting inventory orders with empty or invalid legacy snapshots are rejec
     $product = Product::factory()->withRecipe()->create();
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Customer', 'cart' => [['id' => $product->id, 'qty' => 1]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     $item = $order->items()->firstOrFail();
     $snapshot = $item->recipe_snapshot;
     $snapshot[0]['quantity_required'] = 0;
@@ -234,7 +234,7 @@ test('legacy product reservations without recipes still finish once', function (
     $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Legacy customer', 'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: in_array($action, ['prepare', 'expire'], true) ? null : (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: in_array($action, ['prepare', 'expire'], true) ? null : (string) Str::uuid());
     $order->items()->update(['recipe_snapshot' => '[]']);
     $product->recipes()->delete();
     $order->update(['status' => in_array($action, ['prepare', 'expire'], true) ? 'waiting_payment' : 'awaiting_verification']);

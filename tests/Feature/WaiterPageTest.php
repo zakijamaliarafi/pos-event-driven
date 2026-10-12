@@ -65,7 +65,7 @@ function waiterCustomerOrder(): Order
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 7, 'customer_name' => 'Pelanggan layanan',
         'cart' => [['id' => $product->id, 'qty' => 2]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
     drainWaiterPageEvents();
 
     return $order->fresh();
@@ -185,7 +185,7 @@ test('waiter serving preserves paid and unpaid workflow outcomes', function (boo
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'dine_in', 'table_number' => 4, 'customer_name' => 'Layanan',
         'cart' => [['id' => $product->id, 'qty' => 2]],
-    ], cashierId: $prepaid ? $cashier->id : null, deviceId: $prepaid ? null : (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), cashierId: $prepaid ? $cashier->id : null, deviceId: $prepaid ? null : (string) Str::uuid());
     drainWaiterPageEvents();
     if ($prepaid) {
         app(RecordCashPayment::class)->handle($order->id, $cashier->id, 'waiter-prepaid');
@@ -238,6 +238,8 @@ test('waiter handles a missing order inside confirmation', function () {
     $order = waiterPageOrder('ready');
     $page = Livewire::test('pages::waiter.view')->call('openConfirmation', $order->id, 'serve');
     DB::table('order_items')->where('order_id', $order->id)->delete();
+    // Simulate a removed legacy order, which predates the retained submission ledger.
+    DB::table('order_submissions')->where('order_id', $order->id)->delete();
     $order->delete();
     $page->call('serve', $order->id)->assertHasErrors('confirmation')->assertSee('Pesanan tidak ditemukan.')
         ->assertSet('showConfirmation', true)->assertViewHas('confirmationEligible', false);

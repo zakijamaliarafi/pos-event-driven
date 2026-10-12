@@ -1,14 +1,18 @@
-@props(['context', 'rows', 'total', 'blocked', 'linkedTable'])
+@props(['context', 'rows', 'total', 'blocked', 'recoveryOrder', 'linkedTable'])
 
 <form wire:submit="submit" class="customer-cart-form flex flex-col" data-customer-checkout="{{ $context }}" novalidate>
     <div class="flex shrink-0 items-center justify-between gap-3 border-b border-pos-border p-5">
         <h2 id="{{ $context }}-cart-heading" tabindex="-1" @if($context === 'mobile') autofocus @endif class="text-xl font-bold">Keranjang Anda</h2>
         @if($context === 'mobile')
-            <flux:modal.close><flux:button square variant="ghost" icon="x-mark" wire:loading.attr="disabled" wire:target="submit" class="min-h-11 min-w-11" aria-label="Tutup keranjang" /></flux:modal.close>
+            <flux:modal.close><flux:button square variant="ghost" icon="x-mark" wire:loading.attr="disabled" wire:target="submit,checkSubmission,viewPreviousSubmission,startNewSubmission" class="min-h-11 min-w-11" aria-label="Tutup keranjang" /></flux:modal.close>
         @endif
     </div>
     <div class="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-5" data-customer-cart-scroll>
-        <fieldset wire:loading.attr="disabled" wire:target="submit" class="min-w-0 space-y-5" data-customer-cart-fields>
+        <x-order-submission-summary :order="$recoveryOrder" :actions="true" />
+        @if($this->submissionNotice)
+            <p role="status" class="mb-4 rounded-xl bg-pos-soft p-3 text-sm">{{ $this->submissionNotice }}</p>
+        @endif
+        <fieldset wire:loading.attr="disabled" wire:target="submit,checkSubmission,viewPreviousSubmission,startNewSubmission" class="min-w-0 space-y-5" data-customer-cart-fields>
             @error('cart')<p role="alert" tabindex="-1" data-customer-invalid class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-3 text-sm text-pos-danger">{{ $message }}</p>@enderror
             <div class="space-y-4">
                 @forelse($rows as $row)
@@ -28,7 +32,7 @@
                                 <x-customer-quantity :product-id="$row['product']->id" :name="$row['name']" :quantity="$row['quantity']" :limit="$row['limit']" :context="$context" />
                             @endif
                             <p class="break-words text-sm font-semibold text-pos-link">{{ config('pos.currency') }} {{ number_format($row['subtotal'] / 100, 0) }}</p>
-                            <flux:button variant="ghost" size="sm" wire:click="remove(@js($row['key']))" wire:loading.attr="disabled" wire:target="submit" class="min-h-11 text-pos-danger!" aria-label="Hapus {{ $row['name'] }} dari keranjang">Hapus</flux:button>
+                            <flux:button variant="ghost" size="sm" wire:click="remove(@js($row['key']))" wire:loading.attr="disabled" wire:target="submit,checkSubmission,viewPreviousSubmission,startNewSubmission" class="min-h-11 text-pos-danger!" aria-label="Hapus {{ $row['name'] }} dari keranjang">Hapus</flux:button>
                         </div>
                     </div>
                 @empty
@@ -68,9 +72,13 @@
             <span class="break-words text-pos-link" data-test="cart-total-{{ $context }}">{{ config('pos.currency') }} {{ number_format($total / 100, 0) }}</span>
         </div>
         <p class="text-xs leading-relaxed text-pos-muted">Pesanan diverifikasi pramusaji. Bayar tunai di kasir setelah makan.</p>
-        <flux:button type="submit" variant="primary" class="min-h-12 w-full" :disabled="$blocked" wire:loading.attr="disabled" wire:target="submit" wire:key="customer-submit-{{ $context }}-{{ $blocked ? 'blocked' : 'ready' }}">
+        <flux:button type="submit" variant="primary" class="min-h-12 w-full" :disabled="$blocked" wire:loading.attr="disabled" wire:target="submit,checkSubmission,viewPreviousSubmission,startNewSubmission" wire:key="customer-submit-{{ $context }}-{{ $blocked ? 'blocked' : 'ready' }}">
             <span wire:loading.remove wire:target="submit">Kirim pesanan</span>
             <span wire:loading wire:target="submit">Mengirim pesanan…</span>
+        </flux:button>
+        <flux:button type="button" wire:click="checkSubmission" wire:loading.attr="disabled" wire:target="submit,checkSubmission,viewPreviousSubmission,startNewSubmission" class="min-h-11 w-full">
+            <span wire:loading.remove wire:target="checkSubmission">Periksa pengiriman</span>
+            <span wire:loading wire:target="checkSubmission">Memeriksa pengiriman…</span>
         </flux:button>
     </div>
 </form>

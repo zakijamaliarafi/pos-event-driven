@@ -82,7 +82,7 @@ test('Redis broadcast delivery recovers after publication fails without repeatin
         $order = app(SubmitOrder::class)->handle([
             'order_type' => 'takeaway', 'customer_name' => 'Broadcast recovery',
             'cart' => [['id' => $product->id, 'qty' => 1]],
-        ]);
+        ], idempotencyKey: (string) Str::uuid());
         drainRecoveryQueue($queue);
         $receipts = DB::table('domain_event_receipts')->count();
         $fail = true;
@@ -143,7 +143,7 @@ test('Redis worker recovers the full order workflow after an outage without dupl
             'table_number' => 2,
             'customer_name' => 'Recovery customer',
             'cart' => [['id' => $product->id, 'qty' => 1]],
-        ]);
+        ], idempotencyKey: (string) Str::uuid());
 
         Artisan::call('domain:dispatch-outbox');
         expect($order->fresh()->status)->toBe('awaiting_inventory')
@@ -191,7 +191,7 @@ test('Redis worker resumes a verified customer order before kitchen preparation'
         $order = app(SubmitOrder::class)->handle([
             'order_type' => 'dine_in', 'table_number' => 2, 'customer_name' => 'Recovery customer',
             'cart' => [['id' => $product->id, 'qty' => 1]],
-        ], deviceId: (string) Str::uuid());
+        ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
 
         drainRecoveryQueue($queue);
         expect($order->fresh()->status)->toBe('awaiting_verification')

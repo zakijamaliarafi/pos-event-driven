@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 
@@ -26,7 +27,7 @@ function dashboardSale(Product $product, ?string $paidAt, int $quantity = 1): Or
         'order_type' => 'takeaway',
         'customer_name' => 'Dashboard customer',
         'cart' => [['id' => $product->id, 'qty' => $quantity]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
 
     DB::table('order_read_models')->insert([
         'order_id' => $order->id,

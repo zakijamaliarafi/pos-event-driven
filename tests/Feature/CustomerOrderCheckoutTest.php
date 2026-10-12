@@ -48,7 +48,7 @@ test('customer cannot cancel an order from another device', function () {
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: (string) Str::uuid());
+    ], idempotencyKey: (string) Str::uuid(), deviceId: (string) Str::uuid());
 
     expect(fn () => Livewire::withCookie('pos_device', (string) Str::uuid())
         ->test('pages::customer.order')->call('cancel', $order->id))
@@ -64,7 +64,7 @@ test('customer can cancel their own unpaid order', function () {
         'order_type' => 'takeaway',
         'customer_name' => 'Customer',
         'cart' => [['id' => $product->id, 'qty' => 1]],
-    ], deviceId: $deviceId);
+    ], idempotencyKey: (string) Str::uuid(), deviceId: $deviceId);
 
     Livewire::withCookie('pos_device', $deviceId)->test('pages::customer.order')
         ->call('cancel', $order->id)

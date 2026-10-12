@@ -10,6 +10,7 @@ use App\Models\Recipe;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
@@ -234,7 +235,7 @@ test('recipe replacement preserves existing order snapshots and ingredient reser
     $order = app(SubmitOrder::class)->handle([
         'order_type' => 'takeaway', 'customer_name' => 'Recipe Customer',
         'cart' => [['id' => $product->id, 'qty' => 2]],
-    ]);
+    ], idempotencyKey: (string) Str::uuid());
     app(ProcessDomainEvent::class)->process(DB::table('domain_outbox')->where('event_name', 'OrderSubmitted')->value('id'));
     $snapshot = $order->items()->sole()->recipe_snapshot;
     $reserved = $ingredient->fresh()->reserved_stock;
