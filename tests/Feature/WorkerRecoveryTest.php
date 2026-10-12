@@ -4,12 +4,125 @@ use App\Domain\Orders\RecordCashPayment;
 use App\Domain\Orders\SubmitOrder;
 use App\Domain\Orders\TransitionOrder;
 use App\Jobs\DeliverDomainEvent;
+use App\Jobs\DeliverOrderBroadcast;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use Illuminate\Contracts\Broadcasting\Broadcaster;
+use Illuminate\Contracts\Broadcasting\Factory;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+
+beforeEach(function () {
+    if (DB::connection()->getDatabaseName() !== 'testing' || DB::selectOne('select database() as name')->name !== 'testing') {
+        throw new RuntimeException('Worker recovery tests require the testing database.');
+    }
+});
+
+test('broadcast delivery locks its intent across publication without locking unrelated intents', function () {
+    Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    $firstId = (string) Str::uuid();
+    $otherId = (string) Str::uuid();
+    config(['database.connections.broadcast_probe' => config('database.connections.'.config('database.default'))]);
+    $probe = DB::connection('broadcast_probe');
+
+    try {
+        foreach ([$firstId, $otherId] as $index => $id) {
+            DB::table('order_broadcast_outbox')->insert([
+                'id' => $id, 'source_event_id' => (string) Str::uuid(),
+                'order_id' => $index + 1, 'projection_version' => 1,
+                'broadcast_connection' => 'reverb', 'channels' => '["private-staff.orders"]',
+                'payload' => '{}', 'created_at' => now(),
+            ]);
+        }
+
+        $broadcaster = Mockery::mock(Broadcaster::class);
+        $broadcaster->shouldReceive('broadcast')->once()->andReturnUsing(function () use ($probe, $firstId, $otherId) {
+            $probe->beginTransaction();
+
+            try {
+                expect(fn () => $probe->table('order_broadcast_outbox')->where('id', $firstId)->lock('for update nowait')->first())
+                    ->toThrow(QueryException::class);
+                expect($probe->table('order_broadcast_outbox')->where('id', $otherId)->lock('for update nowait')->first()->id)
+                    ->toBe($otherId);
+            } finally {
+                $probe->rollBack();
+            }
+        });
+        $factory = Mockery::mock(Factory::class);
+        $factory->shouldReceive('connection')->with('reverb')->once()->andReturn($broadcaster);
+        $job = new DeliverOrderBroadcast($firstId);
+        $job->handle($factory);
+        $job->handle($factory);
+
+        expect(DB::table('order_broadcast_outbox')->where('id', $firstId)->value('sent_at'))->not->toBeNull()
+            ->and(DB::table('order_broadcast_outbox')->where('id', $otherId)->value('sent_at'))->toBeNull();
+    } finally {
+        DB::purge('broadcast_probe');
+        Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    }
+});
+
+test('Redis broadcast delivery recovers after publication fails without repeating domain effects', function () {
+    Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    $queue = 'pos-broadcast-recovery-'.Str::lower(Str::random(12));
+    config(['pos.domain_queue' => $queue, 'pos.broadcast_queue' => $queue, 'broadcasting.default' => 'reverb']);
+
+    try {
+        $product = Product::factory()->withRecipe(2)->create();
+        $ingredient = $product->recipes()->firstOrFail()->inventoryItem;
+        $order = app(SubmitOrder::class)->handle([
+            'order_type' => 'takeaway', 'customer_name' => 'Broadcast recovery',
+            'cart' => [['id' => $product->id, 'qty' => 1]],
+        ]);
+        drainRecoveryQueue($queue);
+        $receipts = DB::table('domain_event_receipts')->count();
+        $fail = true;
+        $publications = 0;
+        $broadcaster = Mockery::mock(Broadcaster::class);
+        $broadcaster->shouldReceive('broadcast')->andReturnUsing(function () use (&$fail, &$publications) {
+            if ($fail) {
+                throw new RuntimeException('Reverb temporarily unavailable');
+            }
+
+            $publications++;
+        });
+        $factory = Mockery::mock(Factory::class);
+        $factory->shouldReceive('connection')->with('reverb')->andReturn($broadcaster);
+        app()->instance(Factory::class, $factory);
+
+        Artisan::call('orders:dispatch-broadcasts');
+        Artisan::call('queue:work', ['connection' => 'redis', '--queue' => $queue, '--once' => true]);
+        expect(DB::table('order_broadcast_outbox')->whereNotNull('last_error')->count())->toBe(1)
+            ->and(DB::table('order_broadcast_outbox')->whereNotNull('sent_at')->count())->toBe(0);
+
+        // Lose the remaining Redis jobs as well: MySQL must remain sufficient for recovery.
+        Queue::connection('redis')->clear($queue);
+        $fail = false;
+        $this->travel(61)->seconds();
+        Artisan::call('orders:dispatch-broadcasts');
+        $count = DB::table('order_broadcast_outbox')->count();
+
+        for ($index = 0; $index < $count; $index++) {
+            Artisan::call('queue:work', ['connection' => 'redis', '--queue' => $queue, '--once' => true]);
+        }
+
+        expect($publications)->toBe($count)
+            ->and(DB::table('order_broadcast_outbox')->whereNull('sent_at')->count())->toBe(0)
+            ->and(DB::table('order_broadcast_outbox')->whereNotNull('last_error')->count())->toBe(0)
+            ->and(DB::table('domain_event_receipts')->count())->toBe($receipts)
+            ->and($order->fresh()->status)->toBe('waiting_payment')
+            ->and($ingredient->fresh()->current_stock)->toBe('2.00')
+            ->and($ingredient->fresh()->reserved_stock)->toBe('1.00');
+    } finally {
+        $this->travelBack();
+        Queue::connection('redis')->clear($queue);
+        Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);
+    }
+});
 
 test('Redis worker recovers the full order workflow after an outage without duplicate stock use', function () {
     Artisan::call('migrate:fresh', ['--force' => true, '--no-interaction' => true]);

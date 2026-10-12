@@ -9,4 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('domain:dispatch-outbox')->everySecond()->withoutOverlapping();
+Schedule::command('orders:dispatch-broadcasts')->everySecond()->withoutOverlapping();
 Schedule::command('orders:expire-unpaid')->everyMinute()->withoutOverlapping();

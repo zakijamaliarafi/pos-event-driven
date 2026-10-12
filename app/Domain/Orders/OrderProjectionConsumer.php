@@ -6,6 +6,7 @@ use App\Domain\Events\DomainEvent;
 use App\Events\OrderViewChanged;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class OrderProjectionConsumer
 {
@@ -39,6 +40,22 @@ final class OrderProjectionConsumer
             'updated_at' => now(),
         ]);
 
-        DB::afterCommit(fn () => OrderViewChanged::dispatch($order->id, $order->order_number, $order->status));
+        $broadcast = new OrderViewChanged($order->id, $order->order_number, $order->status);
+        $channels = ['private-staff.orders'];
+
+        if ($order->device_id !== null) {
+            $channels[] = 'private-customer.order.'.$order->id;
+        }
+
+        DB::table('order_broadcast_outbox')->insert([
+            'id' => (string) Str::uuid(),
+            'source_event_id' => $event->id,
+            'order_id' => $order->id,
+            'projection_version' => $order->version,
+            'broadcast_connection' => config('broadcasting.default') ?? 'null',
+            'channels' => json_encode($channels, JSON_THROW_ON_ERROR),
+            'payload' => json_encode($broadcast->broadcastWith(), JSON_THROW_ON_ERROR),
+            'created_at' => now(),
+        ]);
     }
 }
