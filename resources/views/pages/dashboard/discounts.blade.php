@@ -409,7 +409,8 @@ new class extends Component
                 <table class="w-full table-fixed text-left">
                     <thead class="border-b border-pos-border text-xs font-bold uppercase tracking-wider text-pos-muted">
                         <tr>
-                            <th scope="col" class="w-[24%] pb-5 pl-2 pr-4">Nama &amp; nilai</th>
+                            <th scope="col" class="w-14 pb-5 pr-3">No.</th>
+                            <th scope="col" class="w-[19%] pb-5 pl-2 pr-4">Nama &amp; nilai</th>
                             <th scope="col" class="w-[24%] pb-5 pr-4">Jadwal</th>
                             <th scope="col" class="w-[10%] pb-5 pr-4">Produk</th>
                             <th scope="col" class="w-[13%] pb-5 pr-4">Status</th>
@@ -419,6 +420,7 @@ new class extends Component
                     <tbody class="divide-y divide-pos-border">
                         @foreach($discountRows as $discount)
                             <tr wire:key="discount-{{ $discount->id }}" class="hover:bg-pos-soft/50">
+                                <td class="py-6 pr-3 text-sm text-pos-muted tabular-nums">{{ $discountRows->firstItem() + $loop->index }}</td>
                                 <td class="py-6 pl-2 pr-6">
                                     <p class="break-words font-bold">{{ $discount->name }}</p>
                                     <p class="mt-1 text-sm text-pos-muted">{{ $discountOverview[$discount->id]['value'] }} potongan</p>

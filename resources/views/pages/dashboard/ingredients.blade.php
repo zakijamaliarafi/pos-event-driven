@@ -297,7 +297,7 @@ new class extends Component
             @else
                 <table class="mt-7 hidden w-full table-fixed text-left lg:table">
                     <thead class="border-b border-pos-border text-xs font-bold uppercase tracking-wider text-pos-muted">
-                        <tr><th scope="col" class="w-[22%] pb-4">Bahan / satuan</th><th scope="col" class="w-[15%] pb-4">Stok total</th><th scope="col" class="w-[15%] pb-4">Dicadangkan</th><th scope="col" class="w-[15%] pb-4">Stok tersedia</th><th scope="col" class="w-[12%] pb-4">Status</th><th scope="col" class="pb-4 text-right">Aksi</th></tr>
+                        <tr><th scope="col" class="w-14 pb-4 pr-3">No.</th><th scope="col" class="w-[22%] pb-4">Bahan / satuan</th><th scope="col" class="w-[15%] pb-4">Stok total</th><th scope="col" class="w-[15%] pb-4">Dicadangkan</th><th scope="col" class="w-[15%] pb-4">Stok tersedia</th><th scope="col" class="w-[12%] pb-4">Status</th><th scope="col" class="pb-4 text-right">Aksi</th></tr>
                     </thead>
                     <tbody class="divide-y divide-pos-border">
                         @foreach($ingredientRows as $ingredient)
@@ -305,6 +305,7 @@ new class extends Component
                                 $overview = $ingredientOverview[$ingredient->id];
                             @endphp
                             <tr wire:key="ingredient-table-{{ $ingredient->id }}" class="hover:bg-pos-soft/50">
+                                <td class="py-5 pr-3 text-sm text-pos-muted tabular-nums">{{ $ingredientRows->firstItem() + $loop->index }}</td>
                                 <td class="py-5 pr-4"><p class="break-words font-semibold">{{ $ingredient->name }}</p><p class="mt-1 break-words text-sm text-pos-muted">{{ $ingredient->unit }}</p></td>
                                 <td class="break-words py-5 pr-3 text-sm tabular-nums">{{ number_format((float) $ingredient->current_stock, 2, ',', '.') }} {{ $ingredient->unit }}</td>
                                 <td class="break-words py-5 pr-3 text-sm text-pos-muted tabular-nums">{{ number_format((float) $ingredient->reserved_stock, 2, ',', '.') }} {{ $ingredient->unit }}</td>

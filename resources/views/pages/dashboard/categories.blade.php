@@ -249,10 +249,11 @@ new class extends Component
                 </div>
             @else
                 <div class="mt-6 hidden lg:block">
-                    <table class="w-full table-fixed text-left"><thead class="border-b border-pos-border text-xs font-bold uppercase tracking-widest text-pos-muted"><tr><th scope="col" class="w-[30%] py-4 pr-4">Nama kategori</th><th scope="col" class="w-[25%] py-4 pr-4">Slug</th><th scope="col" class="w-[15%] py-4 pr-4">Jumlah produk</th><th scope="col" class="w-[30%] py-4 text-right">Aksi</th></tr></thead>
+                    <table class="w-full table-fixed text-left"><thead class="border-b border-pos-border text-xs font-bold uppercase tracking-widest text-pos-muted"><tr><th scope="col" class="w-14 py-4 pr-3">No.</th><th scope="col" class="w-[25%] py-4 pr-4">Nama kategori</th><th scope="col" class="w-[25%] py-4 pr-4">Slug</th><th scope="col" class="w-[15%] py-4 pr-4">Jumlah produk</th><th scope="col" class="w-[30%] py-4 text-right">Aksi</th></tr></thead>
                         <tbody class="divide-y divide-pos-border">
                             @foreach($categoryRows as $category)
-                                <tr wire:key="category-table-{{ $category->id }}" class="hover:bg-pos-soft/50"><td class="break-words py-5 pr-4 font-semibold">{{ $category->name }}</td><td class="break-all py-5 pr-4 text-sm text-pos-muted">{{ $category->slug }}</td><td class="py-5 pr-4 tabular-nums">{{ $category->products_count }} produk</td><td class="py-5"><div class="flex flex-wrap justify-end gap-2">
+                                <tr wire:key="category-table-{{ $category->id }}" class="hover:bg-pos-soft/50">
+                                <td class="py-5 pr-3 text-sm text-pos-muted tabular-nums">{{ $categoryRows->firstItem() + $loop->index }}</td><td class="break-words py-5 pr-4 font-semibold">{{ $category->name }}</td><td class="break-all py-5 pr-4 text-sm text-pos-muted">{{ $category->slug }}</td><td class="py-5 pr-4 tabular-nums">{{ $category->products_count }} produk</td><td class="py-5"><div class="flex flex-wrap justify-end gap-2">
                                     <flux:button data-category-open="edit-{{ $category->id }}" wire:click="editCategory({{ $category->id }})" wire:loading.attr="disabled" aria-label="Ubah kategori {{ $category->name }}" class="min-h-11">Ubah</flux:button>
                                     <flux:button data-category-open="delete-{{ $category->id }}" wire:click="requestCategoryDelete({{ $category->id }})" wire:loading.attr="disabled" variant="ghost" aria-label="Hapus kategori {{ $category->name }}" class="min-h-11 text-pos-danger!">Hapus</flux:button>
                                 </div></td></tr>

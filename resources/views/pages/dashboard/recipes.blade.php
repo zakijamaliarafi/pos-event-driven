@@ -318,11 +318,12 @@ new class extends Component
             @else
                 <table class="mt-7 hidden w-full table-fixed text-left md:table">
                     <thead class="border-b border-pos-border text-xs font-bold uppercase tracking-wider text-pos-muted">
-                        <tr><th scope="col" class="w-2/5 pb-4">Produk</th><th scope="col" class="pb-4">Bahan</th><th scope="col" class="w-1/5 pb-4">Status resep</th><th scope="col" class="pb-4">Porsi tersedia</th><th scope="col" class="w-36 pb-4 text-right">Aksi</th></tr>
+                        <tr><th scope="col" class="w-14 pb-4 pr-3">No.</th><th scope="col" class="w-2/5 pb-4">Produk</th><th scope="col" class="pb-4">Bahan</th><th scope="col" class="w-1/5 pb-4">Status resep</th><th scope="col" class="pb-4">Porsi tersedia</th><th scope="col" class="w-36 pb-4 text-right">Aksi</th></tr>
                     </thead>
                     <tbody class="divide-y divide-pos-border">
                         @foreach($recipeProducts as $product)
                             <tr wire:key="recipe-product-table-{{ $product->id }}">
+                                <td class="py-5 pr-3 text-sm text-pos-muted tabular-nums">{{ $recipeProducts->firstItem() + $loop->index }}</td>
                                 <td class="py-5 pr-4">
                                     <div class="flex items-center gap-3">
                                         @if($product->image_url)
@@ -374,7 +375,7 @@ new class extends Component
                     <div class="min-w-0"><flux:heading id="recipe-editor-heading" tabindex="-1" autofocus size="xl" level="2" class="break-words text-pos-ink">Resep {{ $editingRecipeProduct?->name ?? 'produk' }}</flux:heading><p id="recipe-editor-description" class="mt-1 break-words text-sm text-pos-muted">{{ $editingRecipeProduct?->category?->name ?? 'Tanpa kategori' }} · Kebutuhan bahan untuk satu porsi</p></div>
                     <flux:button type="button" wire:click="requestRecipeClose" wire:loading.attr="disabled" wire:target="saveWholeRecipe" variant="ghost" icon="x-mark" square aria-label="Tutup editor resep" />
                 </div>
-                <div class="min-h-0 space-y-5 overflow-y-auto p-5 sm:p-6">
+                <div class="min-h-0 space-y-3 overflow-y-auto p-4 sm:p-6">
                     @error('recipeForm')<div role="alert" class="rounded-xl border border-pos-danger-border bg-pos-danger-soft p-4 text-sm text-pos-danger">{{ $message }}</div>@enderror
                     @if($recipeConflict)
                         <flux:button type="button" wire:click="requestRecipeReload" icon="arrow-path">Muat ulang resep</flux:button>
@@ -395,6 +396,10 @@ new class extends Component
                     @if($ingredients->isEmpty())
                         <div class="rounded-xl border border-pos-border bg-pos-soft p-4 text-sm"><p>Belum ada bahan. Tambahkan bahan terlebih dahulu untuk menyusun resep.</p><a href="{{ route('menu.ingredient') }}" class="mt-2 inline-block font-semibold text-pos-link underline">Kelola bahan</a></div>
                     @endif
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-sm font-semibold">Komposisi resep <span class="ml-1 text-pos-muted">({{ count($recipeRows) }} bahan)</span></h3>
+                        <span class="text-xs text-pos-muted">Jumlah untuk 1 porsi produk</span>
+                    </div>
                     @foreach($recipeRows as $key => $row)
                         @php
                             $selectedIds = collect($recipeRows)->except($key)->pluck('inventory_item_id')->map(fn ($id) => (string) $id)->all();
@@ -402,32 +407,46 @@ new class extends Component
                             $ingredientSearch = trim($recipeIngredientSearch[$key] ?? '');
                             $options = $ingredients->filter(fn ($ingredient) => (string) $ingredient->id === (string) $row['inventory_item_id'] || (! in_array((string) $ingredient->id, $selectedIds, true) && ($ingredientSearch === '' || Str::contains(Str::lower($ingredient->name), Str::lower($ingredientSearch)))));
                         @endphp
-                        <fieldset data-recipe-row="{{ $key }}" wire:key="recipe-editor-row-{{ $key }}" class="min-w-0 rounded-xl border border-pos-border p-4">
-                            <legend class="px-1 text-sm font-semibold">Bahan {{ $loop->iteration }}</legend>
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div class="space-y-3">
-                                    <flux:input wire:model.live.debounce.300ms="recipeIngredientSearch.{{ $key }}" label="Cari bahan {{ $loop->iteration }}" placeholder="Ketik nama bahan..." />
-                                    <flux:select wire:model.live="recipeRows.{{ $key }}.inventory_item_id" label="Bahan {{ $loop->iteration }}">
-                                        <option value="">Pilih bahan...</option>
-                                        @if($row['inventory_item_id'] !== '' && ! $selectedIngredient)
-                                            <option value="{{ $row['inventory_item_id'] }}">Bahan tidak tersedia — pilih pengganti</option>
-                                        @endif
-                                        @foreach($options as $ingredient)
-                                            <option wire:key="recipe-option-{{ $key }}-{{ $ingredient->id }}" value="{{ $ingredient->id }}">{{ $ingredient->name }} ({{ $ingredient->unit }})</option>
-                                        @endforeach
-                                    </flux:select>
-                                    @if($options->isEmpty() && $ingredients->isNotEmpty())<p class="text-xs text-pos-muted">Tidak ada bahan yang cocok atau semua bahan sudah dipilih.</p>@endif
+                        <fieldset data-recipe-row="{{ $key }}" wire:key="recipe-editor-row-{{ $key }}" class="min-w-0 rounded-xl border border-pos-border bg-pos-surface p-3 sm:p-4">
+                            <legend class="px-1 text-xs font-semibold text-pos-muted">Bahan {{ $loop->iteration }}</legend>
+                            <div class="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
+                                <div class="min-w-0">
+                                    <p id="recipe-ingredient-label-{{ $key }}" class="mb-2 text-sm font-medium">Bahan</p>
+                                    <details data-recipe-picker class="group rounded-lg border border-pos-border bg-pos-surface" x-data x-on:change="if ($event.target.tagName === 'SELECT') { $el.open = false; $el.querySelector('summary').focus() }">
+                                        <summary aria-labelledby="recipe-ingredient-label-{{ $key }} recipe-ingredient-value-{{ $key }}" class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pos-link [&::-webkit-details-marker]:hidden">
+                                            <span id="recipe-ingredient-value-{{ $key }}" class="min-w-0 break-words">{{ $selectedIngredient?->name ?? ($row['inventory_item_id'] !== '' ? 'Bahan tidak tersedia — pilih pengganti' : 'Cari atau pilih bahan...') }}</span>
+                                            <flux:icon.chevron-down class="size-4 shrink-0 text-pos-muted group-open:rotate-180" />
+                                        </summary>
+                                        <div class="space-y-2 border-t border-pos-border p-2">
+                                            <flux:input wire:model.live.debounce.300ms="recipeIngredientSearch.{{ $key }}" aria-label="Cari bahan {{ $loop->iteration }}" placeholder="Ketik nama bahan..." icon="magnifying-glass" />
+                                            <select wire:model.live="recipeRows.{{ $key }}.inventory_item_id" size="5" aria-label="Pilih bahan {{ $loop->iteration }}" class="min-h-40 w-full rounded-lg border border-pos-border bg-pos-surface p-1 text-sm text-pos-ink focus-visible:outline-2 focus-visible:outline-pos-link [&_option]:rounded [&_option]:px-2 [&_option]:py-3">
+                                                <option value="">Pilih bahan...</option>
+                                                @if($row['inventory_item_id'] !== '' && ! $selectedIngredient)
+                                                    <option value="{{ $row['inventory_item_id'] }}">Bahan tidak tersedia — pilih pengganti</option>
+                                                @endif
+                                                @foreach($options as $ingredient)
+                                                    <option wire:key="recipe-option-{{ $key }}-{{ $ingredient->id }}" value="{{ $ingredient->id }}">{{ $ingredient->name }} ({{ $ingredient->unit }})</option>
+                                                @endforeach
+                                            </select>
+                                            @if($options->isEmpty() && $ingredients->isNotEmpty())<p role="status" class="px-1 text-xs text-pos-muted">Tidak ada bahan yang cocok atau semua bahan sudah dipilih.</p>@endif
+                                        </div>
+                                    </details>
+                                    <flux:error name="recipeRows.{{ $key }}.inventory_item_id" />
                                 </div>
-                                <div class="space-y-3">
-                                    <flux:input wire:model="recipeRows.{{ $key }}.quantity_required" type="number" min="0.01" max="999999.99" step="0.01" label="Jumlah per porsi {{ $loop->iteration }}" />
-                                    <p class="text-sm text-pos-muted">Satuan: <span class="font-semibold text-pos-ink">{{ $selectedIngredient?->unit ?? 'Pilih bahan terlebih dahulu' }}</span></p>
-                                    <flux:button type="button" wire:click="removeRecipeRow('{{ $key }}')" variant="ghost" icon="trash" size="sm" aria-label="Hapus bahan {{ $loop->iteration }} dari draft">Hapus bahan</flux:button>
-                                </div>
+                                <flux:field>
+                                    <flux:label for="recipe-quantity-{{ $key }}">Jumlah per porsi</flux:label>
+                                    <flux:input.group>
+                                        <flux:input id="recipe-quantity-{{ $key }}" wire:model="recipeRows.{{ $key }}.quantity_required" type="number" inputmode="decimal" min="0.01" max="999999.99" step="0.01" aria-describedby="recipe-unit-{{ $key }}" />
+                                        <flux:input.group.suffix><span id="recipe-unit-{{ $key }}" class="max-w-20 truncate" title="{{ $selectedIngredient?->unit }}">{{ $selectedIngredient?->unit ?? '—' }}</span></flux:input.group.suffix>
+                                    </flux:input.group>
+                                    <flux:error name="recipeRows.{{ $key }}.quantity_required" />
+                                </flux:field>
+                                <flux:button type="button" wire:click="removeRecipeRow('{{ $key }}')" variant="ghost" icon="trash" class="min-h-11 justify-self-end text-pos-danger! sm:mt-7" aria-label="Hapus bahan {{ $loop->iteration }} dari draft">Hapus</flux:button>
                             </div>
                         </fieldset>
                     @endforeach
                     @if($recipeRows === [])<p class="rounded-xl border border-dashed border-pos-border-strong p-5 text-center text-sm text-pos-muted">Belum ada bahan dalam resep ini. Tambahkan bahan untuk mulai menyusun resep.</p>@endif
-                    <flux:button type="button" wire:click="addRecipeRow" :disabled="$ingredients->isEmpty()" icon="plus">Tambah bahan</flux:button>
+                    <flux:button type="button" wire:click="addRecipeRow" :disabled="$ingredients->isEmpty()" icon="plus" class="min-h-11 w-full border-dashed!">Tambah bahan</flux:button>
                 </div>
                 <div class="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-pos-border bg-pos-soft px-5 py-5 sm:px-6">
                     <span wire:loading wire:target="saveWholeRecipe" role="status" class="mr-auto text-sm text-pos-muted">Menyimpan resep...</span>

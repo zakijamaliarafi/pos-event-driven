@@ -328,11 +328,12 @@ new class extends Component
             @else
                 <table class="mt-6 hidden w-full table-fixed text-left text-sm lg:table">
                     <thead class="border-b border-pos-border text-xs font-bold uppercase tracking-wider text-pos-muted">
-                        <tr><th scope="col" class="w-[35%] pb-4">Produk</th><th scope="col" class="w-[17%] pb-4">Harga</th><th scope="col" class="w-[24%] pb-4">Resep dan porsi</th><th scope="col" class="pb-4 text-right">Aksi</th></tr>
+                        <tr><th scope="col" class="w-14 pb-4 pr-3">No.</th><th scope="col" class="w-[35%] pb-4">Produk</th><th scope="col" class="w-[17%] pb-4">Harga</th><th scope="col" class="w-[24%] pb-4">Resep dan porsi</th><th scope="col" class="pb-4 text-right">Aksi</th></tr>
                     </thead>
                     <tbody class="divide-y divide-pos-border">
                         @foreach($productRows as $product)
                             <tr wire:key="product-table-{{ $product->id }}" class="hover:bg-pos-soft/50">
+                                <td class="py-5 pr-3 text-sm text-pos-muted tabular-nums">{{ $productRows->firstItem() + $loop->index }}</td>
                                 <td class="py-5 pr-4">
                                     <div class="flex items-center gap-3">
                                         @if($product->image_url)
