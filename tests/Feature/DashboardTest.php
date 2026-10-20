@@ -202,7 +202,7 @@ test('a single daily bucket has finite chart coordinates and a visible point', f
         ->assertDontSee('NaN')->assertDontSee('INF');
 })->with(['week', 'month']);
 
-test('dashboard describes the actual reporting period in Indonesian and the application timezone', function (string $range, string $start) {
+test('dashboard retains reporting boundaries without displaying the reporting information section', function (string $range, string $start) {
     $this->travelTo(now()->setDate(2026, 10, 14)->setTime(14, 30));
 
     Livewire::actingAs(dashboardManager())->test('pages::dashboard.revenue')
@@ -210,10 +210,10 @@ test('dashboard describes the actual reporting period in Indonesian and the appl
         ->assertViewHas('periodStart', $start)
         ->assertViewHas('periodCutoff', '14 Oktober 2026, 14:30')
         ->assertViewHas('periodTimezone', config('app.timezone'))
-        ->assertSee($start)
-        ->assertSee('14 Oktober 2026, 14:30')
-        ->assertSee('Zona waktu: '.config('app.timezone'))
-        ->assertSee('Penjualan dihitung berdasarkan waktu pembayaran.');
+        ->assertDontSee('data-test="reporting-period"', false)
+        ->assertDontSee('Zona waktu:')
+        ->assertDontSee('Penjualan dihitung berdasarkan waktu pembayaran.')
+        ->assertSeeInOrder(['Tren pesanan', 'Pendapatan tunai', 'Pesanan dibayar', 'Produk terlaris']);
 })->with([
     ['today', '14 Oktober 2026, 00:00'],
     ['week', '12 Oktober 2026, 00:00'],

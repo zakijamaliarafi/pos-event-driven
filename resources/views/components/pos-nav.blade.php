@@ -3,7 +3,7 @@
     $pageUrl = \Livewire\Livewire::originalUrl();
     $isCustomerPage = parse_url($pageUrl, PHP_URL_PATH) === parse_url(route('customer.order'), PHP_URL_PATH);
 @endphp
-<header class="border-b border-pos-border bg-pos-surface {{ $customerToolbar ? 'sticky top-0 z-30' : '' }}">
+<header x-data="{ navigationOpen: false }" x-on:keydown.escape="if (navigationOpen) { navigationOpen = false; $refs.navigationToggle.focus() }" class="border-b border-pos-border bg-pos-surface {{ $customerToolbar ? 'sticky top-0 z-30' : '' }}">
     <div class="mx-auto flex max-w-7xl flex-wrap items-center {{ $customerToolbar ? 'gap-3 px-4 py-3 sm:px-6' : 'gap-5 px-5 py-4' }}">
         <a href="{{ route('home') }}" aria-label="POS" class="flex items-center gap-3 text-lg font-bold text-pos-ink">
             <img src="{{ asset('oemah-tahu-mark.svg') }}" class="h-10 w-10 shrink-0" alt="">
@@ -11,18 +11,18 @@
                 <span class="leading-tight">Oemah Tahu<br class="sm:hidden"> Purwokerto</span>
             @endif
         </a>
-        <nav class="flex min-w-0 flex-1 flex-wrap items-center gap-4 text-sm font-medium text-pos-muted" aria-label="Navigasi utama">
-            @auth
+        @auth
+        <nav id="pos-navigation" x-cloak x-bind:class="navigationOpen ? 'flex' : 'hidden'" class="order-3 w-full min-w-0 flex-col items-stretch gap-2 border-t border-pos-border pt-3 text-sm font-medium text-pos-muted *:inline-flex *:min-h-11 *:shrink-0 *:items-center lg:order-none lg:flex lg:w-auto lg:flex-1 lg:flex-row lg:items-center lg:gap-4 lg:border-0 lg:pt-0" aria-label="Navigasi utama">
                 @if(auth()->user()->hasRole('cashier')) <a class="hover:text-pos-link" href="{{ route('order.create') }}">Kasir</a> @endif
                 @if(auth()->user()->hasRole('manager'))
-                    @foreach(['dashboard.revenue' => 'Dasbor', 'menu.menu' => 'Produk', 'menu.category' => 'Kategori', 'menu.ingredient' => 'Bahan', 'menu.recipes' => 'Resep', 'menu.discount' => 'Diskon'] as $route => $label)
+                    @foreach(['dashboard.revenue' => 'Dasbor', 'menu.ingredient' => 'Bahan', 'menu.recipes' => 'Resep', 'menu.category' => 'Kategori', 'menu.menu' => 'Produk', 'menu.discount' => 'Diskon'] as $route => $label)
                         <a href="{{ route($route) }}" @if($pageUrl === route($route)) aria-current="page" @endif class="rounded-lg px-3 py-2 {{ $pageUrl === route($route) ? 'bg-pos-action font-semibold text-pos-action-foreground' : 'hover:bg-pos-soft hover:text-pos-link' }}">{{ $label }}</a>
                     @endforeach
                 @endif
                 @if(auth()->user()->hasRole('kitchen')) <a class="hover:text-pos-link" href="{{ route('kitchen.view') }}">Dapur</a> @endif
                 @if(auth()->user()->hasRole('waiter')) <a class="hover:text-pos-link" href="{{ route('waiter.view') }}">Pramusaji</a> @endif
-            @endauth
         </nav>
+        @endauth
         <div class="ml-auto flex shrink-0 items-center gap-2">
             <flux:button x-data x-on:click="$flux.dark = ! $flux.dark" square aria-label="Tampilan" x-bind:aria-label="$flux.dark ? 'Aktifkan tema terang' : 'Aktifkan tema gelap'" class="border-pos-border-strong bg-pos-surface text-pos-ink hover:bg-pos-soft {{ $customerToolbar ? 'min-h-11 min-w-11' : '' }}" data-test="theme-toggle">
                 <flux:icon.moon class="size-5 dark:hidden" />
@@ -56,10 +56,14 @@
                         </form>
                     </flux:menu>
                 </flux:dropdown>
+                <button type="button" x-ref="navigationToggle" x-on:click="navigationOpen = ! navigationOpen" x-bind:aria-expanded="navigationOpen" aria-expanded="false" aria-controls="pos-navigation" aria-label="Buka atau tutup navigasi" class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-pos-border-strong bg-pos-surface text-pos-ink shadow-sm hover:bg-pos-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pos-link lg:hidden">
+                    <flux:icon.bars-3 x-show="! navigationOpen" class="size-5" />
+                    <flux:icon.x-mark x-cloak x-show="navigationOpen" class="size-5" />
+                </button>
             @endauth
         </div>
         @if($customerToolbar)
-            <div class="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
+            <div class="order-4 flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
                 {{ $customerContext ?? '' }}
                 <div class="flex min-w-0 flex-wrap items-center gap-2">{{ $customerActions ?? '' }}</div>
             </div>

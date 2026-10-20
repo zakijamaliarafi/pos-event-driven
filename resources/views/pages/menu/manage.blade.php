@@ -1444,7 +1444,6 @@ new class extends Component
                     @endif
                 </div>
                 <div class="mt-4 flex flex-col gap-2 text-sm sm:flex-row sm:items-start sm:justify-between">
-                    <p class="max-w-2xl text-pos-muted">Porsi tersedia dihitung dari stok bahan setelah dikurangi pencadangan. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
                     <a href="{{ route('menu.recipes') }}" class="inline-flex min-h-11 shrink-0 items-center rounded-lg font-semibold text-pos-link underline underline-offset-4">Kelola resep</a>
                 </div>
                 <p wire:loading.delay wire:target="productSearch,productCategoryFilter,resetProductFilters,refreshProducts,nextPage,previousPage" role="status" class="mt-3 text-sm text-pos-link">Memuat produk...</p>
@@ -1602,11 +1601,6 @@ new class extends Component
                         <option value="sufficient">Cukup</option>
                     </flux:select>
                 </div>
-                <div class="mt-5 rounded-xl border border-pos-border bg-pos-soft p-4 text-sm text-pos-muted">
-                    <p>Stok total mencakup stok yang dicadangkan untuk pesanan. Stok tersedia = stok total − dicadangkan.</p>
-                    <p class="mt-1">Status Rendah berarti stok tersedia berada pada atau di bawah batas stok rendah. Status ini tidak memicu notifikasi atau membatasi penjualan.</p>
-                    <p class="mt-1">Stok ditampilkan saat halaman dimuat. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
-                </div>
                 <p wire:loading.delay wire:target="ingredientSearch,ingredientStatusFilter,resetIngredientFilters,refreshIngredients,nextPage,previousPage" role="status" class="mt-3 text-sm text-pos-link">Memuat bahan...</p>
 
                 @if($ingredientRows->isEmpty())
@@ -1758,7 +1752,6 @@ new class extends Component
                         <option value="without">Tanpa resep</option>
                     </flux:select>
                 </div>
-                <p class="mt-4 text-sm text-pos-muted">Porsi tersedia dihitung dari stok bahan setelah dikurangi pencadangan saat halaman dimuat atau diperbarui. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
                 <p wire:loading.delay wire:target="recipeSearch,recipeCategoryFilter,recipePresenceFilter,refreshRecipes,nextPage,previousPage" role="status" class="mt-3 text-sm text-pos-link">Memuat produk...</p>
 
                 @if($recipeProducts->isEmpty())
@@ -1914,7 +1907,6 @@ new class extends Component
                         <option value="">Semua jadwal</option><option value="interval">Rentang tanggal</option><option value="routine">Rutin mingguan</option>
                     </flux:select>
                 </div>
-                <p class="mt-5 rounded-xl border border-pos-border bg-pos-soft p-4 text-sm text-pos-muted">Aktif berarti diskon diizinkan untuk digunakan. Potongan hanya berlaku sesuai jadwal dan pilihan produk. Untuk melihat perubahan dari pengguna lain, muat ulang halaman melalui browser.</p>
                 <p wire:loading.delay wire:target="discountSearch,discountStatusFilter,discountScheduleFilter,refreshDiscounts,resetDiscountFilters,nextPage,previousPage,gotoPage" role="status" class="mt-3 text-sm text-pos-link">Memuat diskon...</p>
                 @if($discountRows->isEmpty())
                     <div class="py-12 text-center">

@@ -108,55 +108,32 @@ new class extends Component
 
 <div class="min-h-screen bg-pos-canvas text-pos-ink">
     <x-pos-nav />
-    <main class="mx-auto w-full min-w-0 max-w-7xl space-y-5 px-5 py-6 sm:space-y-6 sm:py-8">
-        <div class="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+    <main class="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-5 px-5 py-5 sm:gap-6 sm:py-6">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div class="min-w-0">
                 <h1 class="text-3xl font-bold tracking-tight">Dasbor penjualan</h1>
-                <p class="mt-2 text-sm leading-relaxed text-pos-muted" data-test="reporting-period">
-                    {{ $periodStart }} – {{ $periodCutoff }}<span class="block text-xs">Zona waktu: {{ $periodTimezone }}</span>
-                </p>
-                <p class="mt-2 text-sm text-pos-muted">Penjualan dihitung berdasarkan waktu pembayaran.</p>
             </div>
-            <div class="shrink-0 space-y-2">
-                <div class="flex items-end gap-3">
-                    <flux:field class="min-w-0 flex-1 md:w-44">
-                        <flux:label for="dashboard-period">Periode</flux:label>
+            <div class="relative shrink-0">
+                <div class="flex items-center gap-3">
+                    <flux:label for="dashboard-period" class="shrink-0">Periode</flux:label>
+                    <div class="min-w-0 flex-1 md:w-44 md:flex-none">
                         <flux:select id="dashboard-period" wire:model.live="range" wire:loading.attr="disabled" wire:target="range,refreshMetrics" class="min-h-11 border-pos-border-strong bg-pos-surface text-pos-ink">
                             <flux:select.option value="today">Hari ini</flux:select.option>
                             <flux:select.option value="week">Minggu ini</flux:select.option>
                             <flux:select.option value="month">Bulan ini</flux:select.option>
                         </flux:select>
-                    </flux:field>
+                    </div>
                 </div>
-                <div class="min-h-5 text-sm text-pos-muted" role="status" aria-live="polite">
+                <div class="absolute right-0 top-full mt-1 text-xs text-pos-muted" role="status" aria-live="polite">
                     <span wire:loading.delay>Memuat dasbor…</span>
                 </div>
             </div>
         </div>
         <div class="space-y-5 sm:space-y-6" aria-busy="false" wire:loading.attr="aria-busy" data-test="dashboard-report">
-            <div class="grid gap-4 md:grid-cols-2">
-                <div class="flex min-w-0 items-center gap-4 rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm sm:p-6" data-test="revenue-card">
-                    <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-pos-soft text-pos-link" aria-hidden="true"><flux:icon.banknotes class="size-6" /></div>
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-pos-muted">Pendapatan tunai</p>
-                        <p class="mt-1 break-words text-3xl font-bold tracking-tight tabular-nums">{{ config('pos.currency') }} {{ number_format($revenue, 0) }}</p>
-                    </div>
-                </div>
-                <div class="flex min-w-0 items-center gap-4 rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm sm:p-6" data-test="orders-card">
-                    <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-pos-soft text-pos-link" aria-hidden="true"><flux:icon.shopping-bag class="size-6" /></div>
-                    <div class="min-w-0">
-                        <p class="text-sm font-medium text-pos-muted">Pesanan dibayar</p>
-                        <p class="mt-1 break-words text-3xl font-bold tracking-tight tabular-nums">{{ number_format($orderCount) }}</p>
-                    </div>
-                </div>
-            </div>
             <div class="grid items-start gap-5 sm:gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                 <section class="min-w-0 rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm sm:p-6" aria-labelledby="order-trend-heading">
                     <h2 id="order-trend-heading" class="text-lg font-bold">Tren pesanan</h2>
                     <p class="mt-1 text-sm text-pos-muted">Pesanan dibayar {{ in_array($range, ['week', 'month'], true) ? 'per hari' : 'per jam' }}.</p>
-                    @if($orderCount === 0)
-                        <p class="mt-3 rounded-xl bg-pos-soft px-4 py-3 text-sm text-pos-muted" data-test="trend-empty">Belum ada pesanan dibayar pada periode ini. Grafik menampilkan nilai nol.</p>
-                    @endif
                     <div class="mt-4 min-w-0" data-test="order-trend">
                         @foreach($trendCharts as $variant => $chart)
                             <svg wire:key="trend-chart-{{ $variant }}" viewBox="0 0 {{ $chart['width'] }} {{ $chart['height'] }}" preserveAspectRatio="none" class="w-full {{ $variant === 'mobile' ? 'block h-60 sm:hidden' : 'hidden h-[280px] sm:block' }}" role="img" aria-labelledby="order-trend-title-{{ $variant }} order-trend-description-{{ $variant }}">
@@ -193,44 +170,62 @@ new class extends Component
                         </table>
                     </details>
                 </section>
-                <section class="min-w-0 overflow-hidden rounded-2xl border border-pos-border bg-pos-surface shadow-sm" aria-labelledby="top-products-heading">
-                    <div class="p-5 sm:p-6">
-                        <h2 id="top-products-heading" class="text-lg font-bold">Produk terlaris</h2>
-                        <p class="mt-1 text-sm text-pos-muted">Lima produk dengan unit terjual terbanyak dari pesanan dibayar.</p>
+                <div class="flex min-w-0 flex-col gap-5 sm:gap-6">
+                    <div class="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-1">
+                        <div class="flex min-w-0 items-center gap-4 rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm sm:p-6" data-test="revenue-card">
+                            <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-pos-soft text-pos-link" aria-hidden="true"><flux:icon.banknotes class="size-6" /></div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-pos-muted">Pendapatan tunai</p>
+                                <p class="mt-1 break-words text-3xl font-bold tracking-tight tabular-nums">{{ config('pos.currency') }} {{ number_format($revenue, 0) }}</p>
+                            </div>
+                        </div>
+                        <div class="flex min-w-0 items-center gap-4 rounded-2xl border border-pos-border bg-pos-surface p-5 shadow-sm sm:p-6" data-test="orders-card">
+                            <div class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-pos-soft text-pos-link" aria-hidden="true"><flux:icon.shopping-bag class="size-6" /></div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-pos-muted">Pesanan dibayar</p>
+                                <p class="mt-1 break-words text-3xl font-bold tracking-tight tabular-nums">{{ number_format($orderCount) }}</p>
+                            </div>
+                        </div>
                     </div>
-                    @if($topProducts->isEmpty())
-                        <p class="border-t border-pos-border px-5 py-8 text-sm text-pos-muted sm:px-6" data-test="products-empty">Belum ada penjualan yang dibayar pada periode ini.</p>
-                    @else
-                        <ol class="divide-y divide-pos-border border-t border-pos-border lg:hidden" data-test="top-products-cards">
-                            @foreach($topProducts as $product)
-                                <li wire:key="top-product-card-{{ $product->id }}" class="p-5 sm:px-6">
-                                    <div class="flex items-start gap-3">
-                                        <span class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-pos-soft text-sm font-bold text-pos-link" aria-label="Peringkat {{ $loop->iteration }}">{{ $loop->iteration }}</span>
-                                        <h3 class="min-w-0 break-words font-semibold">{{ $product->name }}</h3>
-                                    </div>
-                                    <dl class="mt-3 grid min-w-0 grid-cols-2 gap-3 text-sm">
-                                        <div><dt class="text-pos-muted">Unit terjual</dt><dd class="mt-1 break-words font-medium tabular-nums">{{ number_format($product->units) }}</dd></div>
-                                        <div class="min-w-0 text-right"><dt class="text-pos-muted">Pendapatan</dt><dd class="mt-1 break-words font-semibold tabular-nums">{{ config('pos.currency') }} {{ number_format($product->revenue, 0) }}</dd></div>
-                                    </dl>
-                                </li>
-                            @endforeach
-                        </ol>
-                        <table class="hidden w-full table-fixed text-left text-sm lg:table" data-test="top-products-table">
-                            <thead class="bg-pos-soft text-xs text-pos-muted">
-                                <tr><th scope="col" class="w-[43%] px-5 py-3">Nama produk</th><th scope="col" class="w-[20%] px-2 py-3 text-right">Unit terjual</th><th scope="col" class="w-[37%] px-5 py-3 text-right">Pendapatan</th></tr>
-                            </thead>
-                            <tbody class="divide-y divide-pos-border">
+                    <section class="min-w-0 overflow-hidden rounded-2xl border border-pos-border bg-pos-surface shadow-sm" aria-labelledby="top-products-heading">
+                        <div class="p-5 sm:p-6">
+                            <h2 id="top-products-heading" class="text-lg font-bold">Produk terlaris</h2>
+                            <p class="mt-1 text-sm text-pos-muted">Lima produk dengan unit terjual terbanyak dari pesanan dibayar.</p>
+                        </div>
+                        @if($topProducts->isEmpty())
+                            <p class="border-t border-pos-border px-5 py-8 text-sm text-pos-muted sm:px-6" data-test="products-empty">Belum ada penjualan yang dibayar pada periode ini.</p>
+                        @else
+                            <ol class="divide-y divide-pos-border border-t border-pos-border lg:hidden" data-test="top-products-cards">
                                 @foreach($topProducts as $product)
-                                    <tr wire:key="top-product-row-{{ $product->id }}">
-                                        <th scope="row" class="px-5 py-4 align-top font-medium"><div class="flex items-start gap-2"><span class="shrink-0 font-bold text-pos-link" aria-label="Peringkat {{ $loop->iteration }}">{{ $loop->iteration }}.</span><span class="min-w-0 break-words">{{ $product->name }}</span></div></th>
-                                        <td class="break-words px-2 py-4 text-right align-top tabular-nums">{{ number_format($product->units) }}</td>
-                                        <td class="break-words px-5 py-4 text-right align-top font-semibold tabular-nums">{{ config('pos.currency') }} {{ number_format($product->revenue, 0) }}</td>
-                                    </tr>
+                                    <li wire:key="top-product-card-{{ $product->id }}" class="p-5 sm:px-6">
+                                        <div class="flex items-start gap-3">
+                                            <span class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-pos-soft text-sm font-bold text-pos-link" aria-label="Peringkat {{ $loop->iteration }}">{{ $loop->iteration }}</span>
+                                            <h3 class="min-w-0 break-words font-semibold">{{ $product->name }}</h3>
+                                        </div>
+                                        <dl class="mt-3 grid min-w-0 grid-cols-2 gap-3 text-sm">
+                                            <div><dt class="text-pos-muted">Unit terjual</dt><dd class="mt-1 break-words font-medium tabular-nums">{{ number_format($product->units) }}</dd></div>
+                                            <div class="min-w-0 text-right"><dt class="text-pos-muted">Pendapatan</dt><dd class="mt-1 break-words font-semibold tabular-nums">{{ config('pos.currency') }} {{ number_format($product->revenue, 0) }}</dd></div>
+                                        </dl>
+                                    </li>
                                 @endforeach
-                            </tbody>
-                        </table>
-                    @endif
-                </section>
+                            </ol>
+                            <table class="hidden w-full table-fixed text-left text-sm lg:table" data-test="top-products-table">
+                                <thead class="bg-pos-soft text-xs text-pos-muted">
+                                    <tr><th scope="col" class="w-[43%] px-5 py-3">Nama produk</th><th scope="col" class="w-[20%] px-2 py-3 text-right">Unit terjual</th><th scope="col" class="w-[37%] px-5 py-3 text-right">Pendapatan</th></tr>
+                                </thead>
+                                <tbody class="divide-y divide-pos-border">
+                                    @foreach($topProducts as $product)
+                                        <tr wire:key="top-product-row-{{ $product->id }}">
+                                            <th scope="row" class="px-5 py-4 align-top font-medium"><div class="flex items-start gap-2"><span class="shrink-0 font-bold text-pos-link" aria-label="Peringkat {{ $loop->iteration }}">{{ $loop->iteration }}.</span><span class="min-w-0 break-words">{{ $product->name }}</span></div></th>
+                                            <td class="break-words px-2 py-4 text-right align-top tabular-nums">{{ number_format($product->units) }}</td>
+                                            <td class="break-words px-5 py-4 text-right align-top font-semibold tabular-nums">{{ config('pos.currency') }} {{ number_format($product->revenue, 0) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endif
+                    </section>
+                </div>
             </div>
         </div>
     </main>
