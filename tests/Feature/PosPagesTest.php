@@ -86,7 +86,7 @@ test('manager pages use distinct headings and navigation only in the header', fu
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
     $links = $xpath->query('//header/nav/a | //header//nav/a');
-    $expectedRoutes = ['dashboard.revenue', 'menu.menu', 'menu.category', 'menu.ingredient', 'menu.recipes', 'menu.discount'];
+    $expectedRoutes = ['dashboard.revenue', 'menu.ingredient', 'menu.recipes', 'menu.category', 'menu.menu', 'menu.discount'];
 
     expect(iterator_to_array($links))->toHaveCount(6);
 

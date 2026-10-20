@@ -38,7 +38,7 @@ test('category search filters names and resets pagination', function () {
         'slug' => sprintf('kategori-%02d', $sequence->index),
     ])->create();
 
-    Livewire::test('pages::menu.manage')->set('section', 'categories')
+    Livewire::test('pages::dashboard.categories')
         ->assertViewHas('categoryRows', fn (LengthAwarePaginator $rows) => $rows->count() === 10 && $rows->total() === 11 && $rows->onFirstPage() && $rows->hasMorePages())
         ->assertSee('Menampilkan 1 sampai 10 dari 11 kategori')
         ->call('nextPage', 'categoriesPage')->assertSee('Menampilkan 11 sampai 11 dari 11 kategori')
@@ -48,14 +48,14 @@ test('category search filters names and resets pagination', function () {
         ->set('categorySearch', 'Kategori 03')->assertSet('paginators.categoriesPage', 1)
         ->assertSee('Menampilkan 1 sampai 1 dari 1 kategori')
         ->assertViewHas('categoryRows', fn (LengthAwarePaginator $rows) => $rows->pluck('name')->all() === ['Kategori 03'])
-        ->assertViewHas('categories', fn ($categories) => $categories->isEmpty())
+        ->assertViewMissing('categories')
         ->set('categorySearch', 'missing')->assertSee('Tidak ada kategori yang cocok dengan pencarian.')
         ->assertSee('Menampilkan 0 sampai 0 dari 0 kategori')
         ->set('categorySearch', '')->assertSee('Menampilkan 1 sampai 10 dari 11 kategori');
 });
 
 test('empty category page has a distinct message and disabled pagination', function () {
-    Livewire::test('pages::menu.manage')->set('section', 'categories')
+    Livewire::test('pages::dashboard.categories')
         ->assertSee('Belum ada kategori.')->assertSee('Menampilkan 0 sampai 0 dari 0 kategori')
         ->assertViewHas('categoryRows', fn (LengthAwarePaginator $rows) => $rows->onFirstPage() && ! $rows->hasMorePages());
 
@@ -69,7 +69,7 @@ test('empty category page has a distinct message and disabled pagination', funct
 test('category modal clears form and errors when cancelled or reopened', function () {
     $category = Category::factory()->create(['name' => 'Modern']);
 
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->assertSet('showCategoryModal', false)
+    Livewire::test('pages::dashboard.categories')->assertSet('showCategoryModal', false)
         ->call('editCategory', $category->id)->assertSet('showCategoryModal', true)
         ->assertSet('categoryId', $category->id)->assertSet('categoryName', 'Modern')->assertSee('Ubah kategori')
         ->set('categoryName', '')->call('saveCategory')->assertHasErrors('categoryName')
@@ -84,7 +84,7 @@ test('category modal clears form and errors when cancelled or reopened', functio
 });
 
 test('invalid category names keep modal open without writing events', function (string $name) {
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call('createCategory')
+    Livewire::test('pages::dashboard.categories')->call('createCategory')
         ->set('categoryName', $name)->call('saveCategory')->assertHasErrors('categoryName')->assertSee('Masukkan nama kategori, maksimal 255 karakter.')
         ->assertSet('showCategoryModal', true);
 
@@ -92,7 +92,7 @@ test('invalid category names keep modal open without writing events', function (
 })->with(['', str_repeat('a', 256)]);
 
 test('category modal creates and updates through durable catalog commands', function () {
-    $page = Livewire::test('pages::menu.manage')->set('section', 'categories')->call('createCategory')
+    $page = Livewire::test('pages::dashboard.categories')->call('createCategory')
         ->set('categoryName', 'Pagi Sehat')->call('saveCategory')->assertHasNoErrors()
         ->assertSet('showCategoryModal', false)->assertSet('categoryName', '')->assertSee('Kategori disimpan.');
     $category = Category::sole();
@@ -114,7 +114,7 @@ test('saving and deleting categories resets the last page', function () {
     ])->create();
     $last = $categories->last();
 
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call('nextPage', 'categoriesPage')
+    Livewire::test('pages::dashboard.categories')->call('nextPage', 'categoriesPage')
         ->call('editCategory', $last->id)->set('categoryName', 'Updated')->call('saveCategory')
         ->assertSet('paginators.categoriesPage', 1)
         ->call('nextPage', 'categoriesPage')->call('requestCategoryDelete', $last->id)->call('deleteCategory')
@@ -128,7 +128,7 @@ test('category containing products cannot be deleted', function () {
     $category = Category::factory()->create();
     Product::factory()->create(['category_id' => $category->id]);
 
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call('requestCategoryDelete', $category->id)->call('deleteCategory')
+    Livewire::test('pages::dashboard.categories')->call('requestCategoryDelete', $category->id)->call('deleteCategory')
         ->assertHasErrors('categoryDelete')->assertSee(__('catalog.errors.category_has_products'));
 
     expect($category->fresh()->trashed())->toBeFalse()
@@ -138,9 +138,9 @@ test('category containing products cannot be deleted', function () {
 test('product selector keeps all categories beyond the first category page', function () {
     Category::factory()->count(11)->create();
 
-    Livewire::test('pages::menu.manage')->assertSet('section', 'products')
+    Livewire::test('pages::dashboard.products')
         ->assertViewHas('categories', fn ($categories) => $categories->count() === 11)
-        ->assertViewHas('categoryRows', null)->assertDontSee('Cari kategori...');
+        ->assertViewMissing('categoryRows')->assertDontSee('Cari kategori...');
 });
 
 test('category slug collisions are shown in the modal without changing data', function (bool $deleted, bool $editing) {
@@ -149,7 +149,7 @@ test('category slug collisions are shown in the modal without changing data', fu
         $existing->delete();
     }
     $category = Category::factory()->create(['name' => 'Paket Nasi Ikan', 'slug' => 'paket-nasi-ikan']);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'categories');
+    $page = Livewire::test('pages::dashboard.categories');
     if ($editing) {
         $page->call('editCategory', $category->id);
     } else {
@@ -173,7 +173,7 @@ test('renaming to a deleted category restores it and merges products atomically'
     $archivedProduct = Product::factory()->create(['category_id' => $source->id]);
     $archivedProduct->delete();
 
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call('editCategory', $source->id)
+    Livewire::test('pages::dashboard.categories')->call('editCategory', $source->id)
         ->set('categoryName', 'Paket Nasi Ayam')->call('saveCategory')->assertHasNoErrors()
         ->assertSet('showCategoryModal', false)->assertSee('Paket Nasi Ayam')->assertDontSee('Paket Nasi Ikan');
 
@@ -194,7 +194,7 @@ test('adding a deleted category restores its original record and emits a durable
     $category = Category::factory()->create(['name' => 'Paket Nasi Ayam', 'slug' => 'paket-nasi-ayam', 'version' => 3]);
     $category->delete();
 
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call('createCategory')
+    Livewire::test('pages::dashboard.categories')->call('createCategory')
         ->set('categoryName', 'Paket Nasi-Ayam')->call('saveCategory')->assertHasNoErrors()
         ->assertSet('showCategoryModal', false)->assertSee('Paket Nasi-Ayam');
 
@@ -207,7 +207,7 @@ test('adding a deleted category restores its original record and emits a durable
 test('category may retain its own slug when saved', function () {
     $category = Category::factory()->create(['name' => 'Paket Nasi Ayam', 'slug' => 'paket-nasi-ayam']);
 
-    Livewire::test('pages::menu.manage')->set('section', 'categories')
+    Livewire::test('pages::dashboard.categories')
         ->call('editCategory', $category->id)->call('saveCategory')->assertHasNoErrors()
         ->assertSet('showCategoryModal', false);
 
@@ -222,7 +222,7 @@ test('category usage filters combine with search and exclude deleted products an
     $deleted->delete();
     Product::factory()->count(2)->create(['category_id' => $used->id]);
     Product::factory()->create(['category_id' => $empty->id])->delete();
-    Livewire::test('pages::menu.manage')->set('section', 'categories')
+    Livewire::test('pages::dashboard.categories')
         ->set('categorySearch', 'Menu')->set('categoryUsageFilter', 'used')
         ->assertViewHas('categoryRows', fn ($rows) => $rows->total() === 1 && $rows->first()->id === $used->id && $rows->first()->products_count === 2)
         ->set('categoryUsageFilter', 'empty')
@@ -234,7 +234,7 @@ test('category usage filters combine with search and exclude deleted products an
 
 test('category refresh preserves filters and resets pagination', function () {
     Category::factory()->count(11)->create(['name' => 'Menu']);
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->set('categorySearch', 'Menu')
+    Livewire::test('pages::dashboard.categories')->set('categorySearch', 'Menu')
         ->set('categoryUsageFilter', 'empty')->call('nextPage', 'categoriesPage')->call('refreshCategories')
         ->assertSet('paginators.categoriesPage', 1)->assertSet('categorySearch', 'Menu')->assertSet('categoryUsageFilter', 'empty')
         ->call('nextPage', 'categoriesPage')->set('categoryUsageFilter', 'used')->assertSet('paginators.categoriesPage', 1);
@@ -242,7 +242,7 @@ test('category refresh preserves filters and resets pagination', function () {
 
 test('category discard confirmation blocks saves and allows continuing the draft', function () {
     $category = Category::factory()->create(['name' => 'Awal']);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'categories')->call('editCategory', $category->id)
+    $page = Livewire::test('pages::dashboard.categories')->call('editCategory', $category->id)
         ->set('categoryName', 'Baru')->call('requestCategoryClose')->assertSet('showCategoryDiscardConfirmation', true)
         ->assertDispatched('category-confirmation-requested')->call('saveCategory')->assertSet('showCategoryModal', true);
     expect($category->fresh()->name)->toBe('Awal');
@@ -253,7 +253,7 @@ test('category discard confirmation blocks saves and allows continuing the draft
 
 test('category deletion confirms by name and rechecks late products', function () {
     $category = Category::factory()->create(['name' => 'Kategori pilihan']);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'categories')->call('requestCategoryDelete', $category->id)
+    $page = Livewire::test('pages::dashboard.categories')->call('requestCategoryDelete', $category->id)
         ->assertSet('deletingCategoryName', 'Kategori pilihan')->assertSet('showCategoryDeleteModal', true);
     expect($category->fresh()->trashed())->toBeFalse();
     $product = Product::factory()->create(['category_id' => $category->id]);
@@ -266,31 +266,31 @@ test('category deletion confirms by name and rechecks late products', function (
 
 test('removed category retains editor draft and deletion dialog errors', function () {
     $category = Category::factory()->create();
-    $editor = Livewire::test('pages::menu.manage')->set('section', 'categories')->call('editCategory', $category->id)->set('categoryName', 'Draft baru');
-    $deletion = Livewire::test('pages::menu.manage')->set('section', 'categories')->call('requestCategoryDelete', $category->id);
+    $editor = Livewire::test('pages::dashboard.categories')->call('editCategory', $category->id)->set('categoryName', 'Draft baru');
+    $deletion = Livewire::test('pages::dashboard.categories')->call('requestCategoryDelete', $category->id);
     $category->delete();
     $editor->call('saveCategory')->assertHasErrors('categoryForm')->assertSet('categoryName', 'Draft baru')->assertSet('showCategoryModal', true);
     $deletion->call('deleteCategory')->assertHasErrors('categoryDelete')->assertSet('showCategoryDeleteModal', true);
 });
 
 test('category state is locked', function (string $property) {
-    $page = Livewire::test('pages::menu.manage')->set('section', 'categories')->call('createCategory');
+    $page = Livewire::test('pages::dashboard.categories')->call('createCategory');
     expect(fn () => $page->set($property, 999999))->toThrow(CannotUpdateLockedPropertyException::class);
 })->with(['categoryId', 'deletingCategoryId', 'deletingCategoryName', 'originalCategoryDraft', 'showCategoryDiscardConfirmation']);
 
 test('category mutations require initialized state', function (string $action) {
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call($action)->assertForbidden();
+    Livewire::test('pages::dashboard.categories')->call($action)->assertForbidden();
     expect(DB::table('domain_outbox')->count())->toBe(0);
 })->with(['saveCategory', 'deleteCategory']);
 
 test('category actions authorize managers', function (string $action) {
     $this->actingAs(User::factory()->create());
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call($action)->assertForbidden();
+    Livewire::test('pages::dashboard.categories')->call($action)->assertForbidden();
 })->with(['createCategory', 'saveCategory', 'deleteCategory', 'requestCategoryClose', 'continueCategoryEditing', 'discardCategoryChanges', 'closeCategoryDeleteModal', 'resetCategoryFilters', 'refreshCategories']);
 
 test('category outbox failures roll back writes and allow retry', function (bool $deleting) {
     $category = Category::factory()->create(['name' => 'Awal']);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'categories');
+    $page = Livewire::test('pages::dashboard.categories');
     if ($deleting) {
         $page->call('requestCategoryDelete', $category->id);
     } else {
@@ -319,18 +319,18 @@ test('category page renders long names mobile cards and protected dialogs', func
     $this->get(route('menu.category'))->assertOk()->assertSee($name)->assertSee('lg:hidden', false)
         ->assertSee('hidden lg:block', false)->assertSee('Jumlah produk')->assertDontSee('wire:click="refreshCategories"', false)
         ->assertDontSee('wire:confirm', false)->assertDontSee('wire:poll', false);
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call('createCategory')->assertSee('Slug dibuat otomatis');
+    Livewire::test('pages::dashboard.categories')->call('createCategory')->assertSee('Slug dibuat otomatis');
 });
 
 test('category actions with ids authorize managers', function (string $action) {
     $category = Category::factory()->create();
     $this->actingAs(User::factory()->create());
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call($action, $category->id)->assertForbidden();
+    Livewire::test('pages::dashboard.categories')->call($action, $category->id)->assertForbidden();
 })->with(['editCategory', 'requestCategoryDelete']);
 
 test('unchanged category editor closes without discard confirmation', function () {
     $category = Category::factory()->create();
-    Livewire::test('pages::menu.manage')->set('section', 'categories')->call('editCategory', $category->id)
+    Livewire::test('pages::dashboard.categories')->call('editCategory', $category->id)
         ->call('requestCategoryClose')->assertSet('showCategoryModal', false)->assertSet('showCategoryDiscardConfirmation', false);
     expect(DB::table('domain_outbox')->count())->toBe(0);
 });

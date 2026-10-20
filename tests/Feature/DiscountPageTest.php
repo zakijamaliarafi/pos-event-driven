@@ -49,7 +49,7 @@ test('discount page renders the reference table with the existing navbar and sch
 });
 
 test('empty discounts and nullable schedules render safely', function () {
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->assertSee('Belum ada diskon.');
+    Livewire::test('pages::dashboard.discounts')->assertSee('Belum ada diskon.');
     foreach (['interval', 'routine'] as $schedule) {
         Discount::create(array_replace($this->discountInput, [
             'name' => $schedule, 'schedule_type' => $schedule, 'start_date' => null, 'end_date' => null,
@@ -63,7 +63,7 @@ test('discount modal clears values and errors after cancel and starts with fresh
         'is_active' => false, 'discount_type' => 'fixed_amount', 'schedule_type' => 'routine',
         'routine_day' => 5, 'start_time' => '08:00', 'end_time' => '10:00',
     ]), [$this->discountProduct->id]);
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->assertSet('showDiscountModal', false)
+    Livewire::test('pages::dashboard.discounts')->assertSet('showDiscountModal', false)
         ->call('editDiscount', $discount->id)->assertSet('showDiscountModal', true)
         ->set('discountName', '')->call('saveDiscount')->assertHasErrors('discountName')
         ->call('closeDiscountModal')->assertSet('showDiscountDiscardConfirmation', true)
@@ -79,14 +79,14 @@ test('discount modal clears values and errors after cancel and starts with fresh
 });
 
 test('discount modal switches between date and weekly fields', function () {
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('createDiscount')
+    Livewire::test('pages::dashboard.discounts')->call('createDiscount')
         ->assertSee('Tanggal mulai')->assertDontSee('Jam mulai')
         ->set('scheduleType', 'routine')->assertSee('Pilih hari...')->assertSee('Jam mulai')->assertSee('Jam selesai')
         ->assertDontSee('Tanggal mulai')->set('scheduleType', 'interval')->assertSee('Tanggal selesai');
 });
 
 test('invalid discount submissions show field errors and keep the modal open without domain writes', function (string $field, mixed $value) {
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('createDiscount')
+    Livewire::test('pages::dashboard.discounts')->call('createDiscount')
         ->set('discountName', 'Promo')->set('discountValue', '10')->set('startDate', '2026-10-01')
         ->set('endDate', '2026-10-07')->set('startTime', '08:00')->set('endTime', '10:00')
         ->set('scheduleType', str_contains($field, 'Time') ? 'routine' : 'interval')
@@ -102,7 +102,7 @@ test('invalid discount submissions show field errors and keep the modal open wit
 
 test('discount modal creates both schedule types with product selections and durable events', function (string $schedule) {
     $product = Product::factory()->create();
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('createDiscount')
+    Livewire::test('pages::dashboard.discounts')->call('createDiscount')
         ->set('discountName', 'Promo')->set('discountValue', '10')->set('scheduleType', $schedule)
         ->set('startDate', '2026-10-01')->set('endDate', '2026-10-07')
         ->set('routineDay', 0)->set('startTime', '08:00')->set('endTime', '10:00')
@@ -122,7 +122,7 @@ test('editing preloads selections and normalized times and preserves inactive st
         'schedule_type' => 'routine', 'start_date' => null, 'end_date' => null,
         'routine_day' => 5, 'start_time' => '08:00', 'end_time' => '10:00', 'is_active' => false,
     ]), [$products[0]->id]);
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('editDiscount', $discount->id)
+    Livewire::test('pages::dashboard.discounts')->call('editDiscount', $discount->id)
         ->assertSet('selectedProducts', [(string) $products[0]->id])->assertSet('routineDay', 5)
         ->assertSet('startTime', '08:00')->assertSet('endTime', '10:00')->assertSet('discountActive', false)
         ->set('discountName', 'Promo baru')->set('selectedProducts', [(string) $products[1]->id])
@@ -134,7 +134,7 @@ test('editing preloads selections and normalized times and preserves inactive st
 
 test('date edit prefill and switching schedules clear irrelevant stored fields', function () {
     $discount = app(ManageCatalog::class)->saveDiscount(null, $this->discountInput, [$this->discountProduct->id]);
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('editDiscount', $discount->id)
+    Livewire::test('pages::dashboard.discounts')->call('editDiscount', $discount->id)
         ->assertSet('startDate', '2026-10-01')->assertSet('endDate', '2026-10-07')
         ->set('scheduleType', 'routine')->set('routineDay', 5)->set('startTime', '08:00')->set('endTime', '10:00')
         ->call('saveDiscount')->assertHasNoErrors();
@@ -143,7 +143,7 @@ test('date edit prefill and switching schedules clear irrelevant stored fields',
 
 test('status badges toggle and delete refreshes the table with durable events', function () {
     $discount = app(ManageCatalog::class)->saveDiscount(null, $this->discountInput, [$this->discountProduct->id]);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts')
+    $page = Livewire::test('pages::dashboard.discounts')
         ->call('toggleDiscount', $discount->id)->assertSee('Tidak aktif');
     expect($discount->fresh()->is_active)->toBeFalse();
     $page->call('toggleDiscount', $discount->id);
@@ -162,7 +162,7 @@ test('discount filters combine and reset named pagination while refresh preserve
     }
     $weekly = Discount::create(array_replace($this->discountInput, ['name' => 'Promo Minggu', 'schedule_type' => 'routine', 'is_active' => false]));
     Discount::create(array_replace($this->discountInput, ['name' => 'Dihapus']))->delete();
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')
+    Livewire::test('pages::dashboard.discounts')
         ->assertViewHas('discountRows', fn (LengthAwarePaginator $rows) => $rows->count() === 10 && $rows->total() === 13)
         ->call('nextPage', 'discountsPage')->assertSee('Menampilkan 11 sampai 13 dari 13 diskon')
         ->set('discountSearch', ' Promo ')->assertSet('paginators.discountsPage', 1)
@@ -180,7 +180,7 @@ test('bulk product controls change matching results and preserve hidden selectio
     $otherCategory = Product::factory()->create(['name' => 'Kopi lain']);
     $deleted = Product::factory()->create(['name' => 'Kopi dihapus', 'category_id' => $category->id]);
     $deleted->delete();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('createDiscount')
+    $page = Livewire::test('pages::dashboard.discounts')->call('createDiscount')
         ->set('selectedProducts', [(string) $this->discountProduct->id])->set('discountProductSearch', 'Kopi')
         ->set('discountProductCategoryFilter', (string) $category->id)->call('selectDiscountProductResults');
     expect($page->get('selectedProducts'))->toEqualCanonicalizing(array_map('strval', [$this->discountProduct->id, ...$matching->modelKeys()]));
@@ -192,7 +192,7 @@ test('bulk product controls change matching results and preserve hidden selectio
 });
 
 test('discount discard confirmation protects fields products and schedule drafts', function () {
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('createDiscount')
+    $page = Livewire::test('pages::dashboard.discounts')->call('createDiscount')
         ->set('discountName', 'Draft')->set('startDate', '2026-10-01')->set('endDate', '2026-10-07')
         ->set('selectedProducts', [(string) $this->discountProduct->id])->set('discountValue', '10')
         ->set('scheduleType', 'routine')->set('scheduleType', 'interval')->assertSet('startDate', '2026-10-01')
@@ -205,7 +205,7 @@ test('discount discard confirmation protects fields products and schedule drafts
 
 test('legacy incomplete discounts can be disabled and deleted but cannot be enabled', function () {
     $discount = Discount::create(array_replace($this->discountInput, ['start_date' => null, 'end_date' => null]));
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts')->assertSee('Jadwal perlu diperbaiki.')
+    $page = Livewire::test('pages::dashboard.discounts')->assertSee('Jadwal perlu diperbaiki.')
         ->assertSee('Pilih produk.')->call('toggleDiscount', $discount->id)->assertHasNoErrors();
     $version = $discount->fresh()->version;
     $page->call('toggleDiscount', $discount->id)->assertHasErrors('discountList')->assertSee('Gunakan Ubah');
@@ -216,7 +216,7 @@ test('legacy incomplete discounts can be disabled and deleted but cannot be enab
 
 test('discount save retains a draft after late removal and outbox failure', function () {
     $discount = app(ManageCatalog::class)->saveDiscount(null, $this->discountInput, [$this->discountProduct->id]);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('editDiscount', $discount->id)->set('discountName', 'Draft');
+    $page = Livewire::test('pages::dashboard.discounts')->call('editDiscount', $discount->id)->set('discountName', 'Draft');
     $failNextEvent = true;
     DB::listen(function (QueryExecuted $query) use (&$failNextEvent): void {
         if ($failNextEvent && str_starts_with($query->sql, 'insert into `domain_outbox`')) {
@@ -234,7 +234,7 @@ test('discount save retains a draft after late removal and outbox failure', func
 
 test('discount deletion retains confirmation after late removal and failed outbox writes', function () {
     $discount = app(ManageCatalog::class)->saveDiscount(null, $this->discountInput, [$this->discountProduct->id]);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('deleteDiscount', $discount->id);
+    $page = Livewire::test('pages::dashboard.discounts')->call('deleteDiscount', $discount->id);
     $failNextEvent = true;
     DB::listen(function (QueryExecuted $query) use (&$failNextEvent): void {
         if ($failNextEvent && str_starts_with($query->sql, 'insert into `domain_outbox`')) {
@@ -250,7 +250,7 @@ test('discount deletion retains confirmation after late removal and failed outbo
 });
 
 test('discount state identifiers and discard baseline are locked', function (string $property, mixed $value) {
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->set($property, $value);
+    Livewire::test('pages::dashboard.discounts')->set($property, $value);
 })->with([
     ['discountId', 999], ['deletingDiscountId', 999], ['deletingDiscountName', 'Forged'],
     ['originalDiscountDraft', ['name' => 'Forged']], ['showDiscountDiscardConfirmation', true],
@@ -258,7 +258,7 @@ test('discount state identifiers and discard baseline are locked', function (str
 
 test('discount actions require manager authorization', function (string $action, array $arguments) {
     $this->actingAs(User::factory()->create());
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call($action, ...$arguments)->assertForbidden();
+    Livewire::test('pages::dashboard.discounts')->call($action, ...$arguments)->assertForbidden();
 })->with([
     ['createDiscount', []], ['editDiscount', [1]], ['saveDiscount', []], ['toggleDiscount', [1]],
     ['deleteDiscount', [1]], ['confirmDiscountDeletion', []], ['selectDiscountProductResults', []],
@@ -266,7 +266,7 @@ test('discount actions require manager authorization', function (string $action,
 ]);
 
 test('discount mutations require initialized forms and confirmations', function (string $action) {
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call($action)->assertForbidden();
+    Livewire::test('pages::dashboard.discounts')->call($action)->assertForbidden();
 })->with(['saveDiscount', 'confirmDiscountDeletion', 'selectDiscountProductResults', 'clearDiscountProductResults']);
 
 test('discount list renders long names fractional fixed amounts and accessible responsive actions', function () {
@@ -284,7 +284,7 @@ test('discount list renders long names fractional fixed amounts and accessible r
 
 test('empty product catalog explains why the discount cannot be saved', function () {
     $this->discountProduct->delete();
-    Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('createDiscount')
+    Livewire::test('pages::dashboard.discounts')->call('createDiscount')
         ->assertSee('Belum ada produk.')->assertSee('Kelola produk')->assertSee('0 produk dipilih')
         ->set('discountName', 'Promo')->set('discountValue', '10')->set('startDate', '2026-10-01')->set('endDate', '2026-10-07')
         ->call('saveDiscount')->assertHasErrors('selectedProducts')->assertSet('showDiscountModal', true);
@@ -293,7 +293,7 @@ test('empty product catalog explains why the discount cannot be saved', function
 
 test('discount catalog queries exclude unrelated inventory and keep complete product choices', function () {
     Product::factory()->count(12)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts');
+    $page = Livewire::test('pages::dashboard.discounts');
     $queries = [];
     DB::listen(function (QueryExecuted $query) use (&$queries): void {
         $queries[] = $query->sql;
@@ -301,7 +301,7 @@ test('discount catalog queries exclude unrelated inventory and keep complete pro
     $this->get(route('menu.discount'))->assertOk();
     $page->call('refreshDiscounts')
         ->assertViewHas('products', fn ($rows) => $rows->count() === 13)
-        ->assertViewHas('ingredients', fn ($rows) => $rows->isEmpty());
+        ->assertViewMissing('ingredients');
     expect(collect($queries)->contains(fn (string $sql) => str_contains($sql, 'from `inventory_items`') || str_contains($sql, 'from `recipes`')))->toBeFalse();
 });
 
@@ -310,7 +310,7 @@ test('filter changes product saves deletion and status toggles reset discount pa
         app(ManageCatalog::class)->saveDiscount(null, array_replace($this->discountInput, ['name' => sprintf('Promo %02d', $number)]), [$this->discountProduct->id]);
     }
     $last = Discount::orderBy('name', 'desc')->first();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'discounts')->call('nextPage', 'discountsPage')
+    $page = Livewire::test('pages::dashboard.discounts')->call('nextPage', 'discountsPage')
         ->call('editDiscount', $last->id)->set('discountName', 'Updated')->call('saveDiscount')->assertSet('paginators.discountsPage', 1)
         ->call('nextPage', 'discountsPage')->call('toggleDiscount', $last->id)->assertSet('paginators.discountsPage', 1)
         ->call('nextPage', 'discountsPage')->call('deleteDiscount', $last->id)->call('confirmDiscountDeletion')

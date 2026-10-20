@@ -28,11 +28,11 @@ Route::middleware(['auth', 'role:cashier'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:manager'])->group(function () {
-    Route::livewire('/ingredient', 'pages::menu.manage')->name('menu.ingredient');
-    Route::livewire('/menu', 'pages::menu.manage')->name('menu.menu');
-    Route::livewire('/menu/categories', 'pages::menu.manage')->name('menu.category');
-    Route::livewire('/menu/discounts', 'pages::menu.manage')->name('menu.discount');
-    Route::livewire('/menu/recipes', 'pages::menu.manage')->name('menu.recipes');
+    Route::livewire('/ingredient', 'pages::dashboard.ingredients')->name('menu.ingredient');
+    Route::livewire('/menu', 'pages::dashboard.products')->name('menu.menu');
+    Route::livewire('/menu/categories', 'pages::dashboard.categories')->name('menu.category');
+    Route::livewire('/menu/discounts', 'pages::dashboard.discounts')->name('menu.discount');
+    Route::livewire('/menu/recipes', 'pages::dashboard.recipes')->name('menu.recipes');
 });
 
 Route::middleware(['auth', 'role:kitchen'])->group(function () {

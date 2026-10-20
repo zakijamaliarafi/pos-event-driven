@@ -42,7 +42,7 @@ test('recipes overview includes missing invalid and exhausted recipes with avail
     @$document->loadHTML($response->getContent());
     expect((new DOMXPath($document))->query('//main//h1')->length)->toBe(1);
 
-    Livewire::test('pages::menu.manage')->set('section', 'recipes')
+    Livewire::test('pages::dashboard.recipes')
         ->assertViewHas('recipeOverview', fn ($rows) => $rows[$available->id]['portions'] === 4);
 });
 
@@ -52,7 +52,7 @@ test('recipe overview search category and presence filters reset pagination', fu
         ->create(['category_id' => $category->id]);
     $withRecipe = Product::factory()->withRecipe(10, 1)->create(['name' => 'Resep lengkap']);
 
-    Livewire::test('pages::menu.manage')->set('section', 'recipes')
+    Livewire::test('pages::dashboard.recipes')
         ->assertViewHas('recipeProducts', fn (LengthAwarePaginator $rows) => $rows->count() === 10 && $rows->total() === 12)
         ->call('nextPage', 'recipesPage')->assertSet('paginators.recipesPage', 2)
         ->set('recipeSearch', 'Produk 03')->assertSet('paginators.recipesPage', 1)
@@ -77,7 +77,7 @@ test('recipe draft editing saves the complete recipe and excludes ingredients in
     $product = Product::factory()->withRecipe(10, 2)->create();
     $first = $product->recipes->first()->inventoryItem;
     $second = InventoryItem::factory()->create(['name' => 'Bahan kedua', 'unit' => 'ml']);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id)
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id)
         ->assertSet('showRecipeModal', true)->assertSet('editingRecipeProductId', $product->id);
     $key = array_key_first($page->get('recipeRows'));
     $page->assertSet('recipeRows.'.$key.'.quantity_required', '2.00')->call('addRecipeRow');
@@ -95,7 +95,7 @@ test('recipe draft editing saves the complete recipe and excludes ingredients in
 
 test('recipe close protects dirty drafts and discarding leaves saved data unchanged', function () {
     $product = Product::factory()->withRecipe(10, 2)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     $key = array_key_first($page->get('recipeRows'));
     $page->set('recipeRows.'.$key.'.quantity_required', '4')->call('requestRecipeClose')
         ->assertSet('showRecipeModal', true)->assertSet('showRecipeDiscardConfirmation', true)
@@ -110,7 +110,7 @@ test('recipe close protects dirty drafts and discarding leaves saved data unchan
 
 test('clearing a whole recipe requires confirmation and can be cancelled', function () {
     $product = Product::factory()->withRecipe(10, 2)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     $key = array_key_first($page->get('recipeRows'));
     $page->call('removeRecipeRow', $key)->call('saveWholeRecipe')->assertSet('showRecipeClearConfirmation', true)
         ->assertSet('showRecipeModal', true)->assertSee('Produk tidak tersedia untuk pesanan baru')
@@ -124,7 +124,7 @@ test('clearing a whole recipe requires confirmation and can be cancelled', funct
 
 test('invalid recipe quantities remain in the editor with field errors', function (string $quantity) {
     $product = Product::factory()->withRecipe(10, 2)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     $key = array_key_first($page->get('recipeRows'));
     $page->set('recipeRows.'.$key.'.quantity_required', $quantity)->call('saveWholeRecipe')
         ->assertHasErrors('recipeRows.'.$key.'.quantity_required')->assertSet('showRecipeModal', true)
@@ -137,7 +137,7 @@ test('invalid recipe quantities remain in the editor with field errors', functio
 test('duplicate missing and soft deleted ingredients are rejected in recipe drafts', function () {
     $product = Product::factory()->withRecipe(10, 2)->create();
     $ingredient = $product->recipes->first()->inventoryItem;
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id)->call('addRecipeRow');
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id)->call('addRecipeRow');
     $key = array_key_last($page->get('recipeRows'));
     $page->call('saveWholeRecipe')->assertHasErrors('recipeRows.'.$key.'.inventory_item_id')
         ->set('recipeRows.'.$key.'.inventory_item_id', (string) $ingredient->id)->call('saveWholeRecipe')
@@ -153,7 +153,7 @@ test('duplicate missing and soft deleted ingredients are rejected in recipe draf
 test('recipe conflicts preserve the draft and require explicit reload', function () {
     $product = Product::factory()->withRecipe(10, 2)->create();
     $ingredient = $product->recipes->first()->inventoryItem;
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     $key = array_key_first($page->get('recipeRows'));
     app(ManageCatalog::class)->saveRecipe($product->id, $ingredient->id, 3);
     $page->set('recipeRows.'.$key.'.quantity_required', '4')->call('saveWholeRecipe')
@@ -168,7 +168,7 @@ test('recipe conflicts preserve the draft and require explicit reload', function
 
 test('refresh recipe overview recalculates portions without overwriting drafts', function () {
     $product = Product::factory()->withRecipe(10, 2)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     $key = array_key_first($page->get('recipeRows'));
     $product->recipes->first()->inventoryItem->forceFill(['reserved_stock' => 6])->save();
     $page->set('recipeRows.'.$key.'.quantity_required', '3')->call('refreshRecipes')
@@ -180,7 +180,7 @@ test('recipe ingredient choices preserve the selection and exclude other selecte
     $product = Product::factory()->withRecipe(10, 2)->create();
     $first = $product->recipes->first()->inventoryItem;
     $second = InventoryItem::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id)->call('addRecipeRow');
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id)->call('addRecipeRow');
     $firstKey = array_key_first($page->get('recipeRows'));
     $secondKey = array_key_last($page->get('recipeRows'));
     $page->set('recipeRows.'.$secondKey.'.inventory_item_id', (string) $second->id)
@@ -196,13 +196,13 @@ test('recipe ingredient choices preserve the selection and exclude other selecte
 
 test('recipe editor rejects client changes to product and version', function (string $property) {
     $product = Product::factory()->withRecipe(10, 2)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     expect(fn () => $page->set($property, 999999))->toThrow(CannotUpdateLockedPropertyException::class);
 })->with(['editingRecipeProductId', 'recipeExpectedVersion', 'originalRecipeRows']);
 
 test('deleted products retain the recipe draft with a useful error', function () {
     $product = Product::factory()->withRecipe(10, 2)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     $draft = $page->get('recipeRows');
     $product->delete();
     $page->call('saveWholeRecipe')->assertHasErrors('recipeForm')->assertSet('recipeRows', $draft)
@@ -212,7 +212,7 @@ test('deleted products retain the recipe draft with a useful error', function ()
 
 test('failed recipe saves retain the draft and can be retried', function () {
     $product = Product::factory()->withRecipe(10, 2)->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'recipes')->call('editProductRecipe', $product->id);
+    $page = Livewire::test('pages::dashboard.recipes')->call('editProductRecipe', $product->id);
     $key = array_key_first($page->get('recipeRows'));
     $failNextEvent = true;
     DB::listen(function (QueryExecuted $query) use (&$failNextEvent): void {
@@ -233,7 +233,7 @@ test('non managers cannot open or mutate recipe editor actions', function (strin
     $product = Product::factory()->withRecipe(10, 2)->create();
     $user = User::factory()->create();
     $this->actingAs($user)->get(route('menu.recipes'))->assertForbidden();
-    Livewire::actingAs($user)->test('pages::menu.manage')->call($action, ...match ($action) {
+    Livewire::actingAs($user)->test('pages::dashboard.recipes')->call($action, ...match ($action) {
         'editProductRecipe' => [$product->id],
         'removeRecipeRow' => ['fake-key'],
         'saveRecipe' => [],

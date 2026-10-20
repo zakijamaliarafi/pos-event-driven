@@ -41,7 +41,7 @@ test('ingredient page renders stock quantities and responsive controls', functio
 
 test('ingredient stock status uses unreserved hundredths and threshold boundaries', function (string $stock, string $reserved, string $threshold, string $available, string $status, string $filter) {
     $ingredient = InventoryItem::factory()->create(['current_stock' => $stock, 'reserved_stock' => $reserved, 'low_stock_threshold' => $threshold]);
-    Livewire::test('pages::menu.manage')->set('section', 'ingredients')
+    Livewire::test('pages::dashboard.ingredients')
         ->assertViewHas('ingredientOverview', fn ($rows) => $rows[$ingredient->id] === ['available' => $available, 'status' => $status])
         ->set('ingredientStatusFilter', $filter)->assertViewHas('ingredientRows', fn ($rows) => $rows->modelKeys() === [$ingredient->id]);
 })->with([
@@ -55,7 +55,7 @@ test('ingredient search status filters pagination and refresh work together', fu
     InventoryItem::factory()->count(11)->sequence(fn ($sequence) => ['name' => sprintf('Bahan %02d', $sequence->index)])->create();
     $empty = InventoryItem::factory()->create(['name' => 'Kosong', 'current_stock' => 2, 'reserved_stock' => 2]);
     $low = InventoryItem::factory()->create(['name' => 'Menipis', 'current_stock' => 3, 'reserved_stock' => 1, 'low_stock_threshold' => 2]);
-    Livewire::test('pages::menu.manage')->set('section', 'ingredients')
+    Livewire::test('pages::dashboard.ingredients')
         ->assertViewHas('ingredientRows', fn (LengthAwarePaginator $rows) => $rows->count() === 10 && $rows->total() === 13)
         ->call('nextPage', 'ingredientsPage')->assertSee('Menampilkan 11 sampai 13 dari 13 bahan')
         ->set('ingredientSearch', ' Bahan 03 ')->assertSet('paginators.ingredientsPage', 1)
@@ -83,7 +83,7 @@ test('empty ingredient catalog has an actionable empty state and disabled pagina
 
 test('ingredient draft confirms discard and never writes on cancellation', function () {
     $ingredient = InventoryItem::factory()->create(['name' => 'Awal']);
-    Livewire::test('pages::menu.manage')->set('section', 'ingredients')
+    Livewire::test('pages::dashboard.ingredients')
         ->call('editIngredient', $ingredient->id)->assertSet('showIngredientModal', true)
         ->assertSet('ingredientName', 'Awal')->assertSee('Stok tersimpan saat ini')
         ->set('ingredientName', 'Belum tersimpan')->call('requestIngredientClose')
@@ -99,7 +99,7 @@ test('ingredient draft confirms discard and never writes on cancellation', funct
 });
 
 test('ingredient create and edit use catalog commands without changing reservations', function () {
-    $page = Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('createIngredient')
+    $page = Livewire::test('pages::dashboard.ingredients')->call('createIngredient')
         ->set('ingredientName', 'Susu')->set('ingredientUnit', 'ml')->set('ingredientStock', '10.55')->set('ingredientThreshold', '2.15')
         ->call('saveIngredient')->assertHasNoErrors()->assertSet('showIngredientModal', false)->assertSee('Bahan disimpan.');
     $ingredient = InventoryItem::sole();
@@ -112,7 +112,7 @@ test('ingredient create and edit use catalog commands without changing reservati
 });
 
 test('ingredient invalid fields keep draft and display Indonesian errors', function (string $field, string $value, string $message) {
-    Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('createIngredient')
+    Livewire::test('pages::dashboard.ingredients')->call('createIngredient')
         ->set('ingredientName', 'Susu')->set('ingredientUnit', 'ml')->set($field, $value)
         ->call('saveIngredient')->assertHasErrors($field)->assertSet('showIngredientModal', true)
         ->assertSet($field, $value)->assertSee(__($message))->assertDispatched('ingredient-validation-failed');
@@ -136,7 +136,7 @@ test('ingredient commands enforce decimal bounds for direct callers', function (
 ]);
 
 test('ingredient decimal minimum and maximum are accepted', function () {
-    Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('createIngredient')
+    Livewire::test('pages::dashboard.ingredients')->call('createIngredient')
         ->set('ingredientName', 'Batas')->set('ingredientUnit', 'g')->set('ingredientStock', '99999999.99')->set('ingredientThreshold', '0')
         ->call('saveIngredient')->assertHasNoErrors();
     expect(InventoryItem::sole()->current_stock)->toBe('99999999.99')->and(InventoryItem::sole()->low_stock_threshold)->toBe('0.00');
@@ -144,7 +144,7 @@ test('ingredient decimal minimum and maximum are accepted', function () {
 
 test('stock below current reservations retains draft without an event', function () {
     $ingredient = InventoryItem::factory()->create(['current_stock' => 10]);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('editIngredient', $ingredient->id);
+    $page = Livewire::test('pages::dashboard.ingredients')->call('editIngredient', $ingredient->id);
     $ingredient->forceFill(['reserved_stock' => '3.00'])->save();
     $page->set('ingredientStock', '2.99')->call('saveIngredient')->assertHasErrors('ingredientStock')
         ->assertSet('ingredientStock', '2.99')->assertSet('showIngredientModal', true)->assertSee(__('catalog.errors.stock_below_reserved'));
@@ -154,7 +154,7 @@ test('stock below current reservations retains draft without an event', function
 
 test('ingredient save failure rolls back and draft can be retried', function () {
     $ingredient = InventoryItem::factory()->create(['name' => 'Awal', 'current_stock' => 10]);
-    $page = Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('editIngredient', $ingredient->id)
+    $page = Livewire::test('pages::dashboard.ingredients')->call('editIngredient', $ingredient->id)
         ->set('ingredientName', 'Baru')->set('ingredientStock', '12.25');
     $failNextEvent = true;
     DB::listen(function (QueryExecuted $query) use (&$failNextEvent): void {
@@ -172,7 +172,7 @@ test('ingredient save failure rolls back and draft can be retried', function () 
 
 test('deleted ingredient keeps draft with a useful error', function () {
     $ingredient = InventoryItem::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('editIngredient', $ingredient->id);
+    $page = Livewire::test('pages::dashboard.ingredients')->call('editIngredient', $ingredient->id);
     $ingredient->delete();
     $page->call('saveIngredient')->assertHasErrors('ingredientForm')->assertSee(__('catalog.errors.ingredient_missing'))
         ->assertSet('showIngredientModal', true)->assertSet('ingredientName', $ingredient->name);
@@ -182,7 +182,7 @@ test('deleted ingredient keeps draft with a useful error', function () {
 test('ingredient deletion requires confirmation and resets the final page', function () {
     $ingredients = InventoryItem::factory()->count(11)->sequence(fn ($sequence) => ['name' => sprintf('Bahan %02d', $sequence->index)])->create();
     $last = $ingredients->last();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('nextPage', 'ingredientsPage')
+    $page = Livewire::test('pages::dashboard.ingredients')->call('nextPage', 'ingredientsPage')
         ->call('requestIngredientDelete', $last->id)->assertSet('showIngredientDeleteModal', true)->assertSee($last->name)
         ->call('closeIngredientDeleteModal')->assertSet('deletingIngredientId', null);
     expect($last->fresh()->trashed())->toBeFalse();
@@ -193,7 +193,7 @@ test('ingredient deletion requires confirmation and resets the final page', func
 
 test('ingredient deletion explains blockers and rechecks late changes', function (bool $late, string $blocker) {
     $ingredient = InventoryItem::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'ingredients');
+    $page = Livewire::test('pages::dashboard.ingredients');
     if ($late) {
         $page->call('requestIngredientDelete', $ingredient->id);
     }
@@ -213,7 +213,7 @@ test('ingredient deletion explains blockers and rechecks late changes', function
 
 test('ingredient ids original draft and confirmation state are locked', function (string $property) {
     $ingredient = InventoryItem::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call('editIngredient', $ingredient->id);
+    $page = Livewire::test('pages::dashboard.ingredients')->call('editIngredient', $ingredient->id);
     expect(fn () => $page->set($property, 999999))->toThrow(CannotUpdateLockedPropertyException::class);
 })->with(['ingredientId', 'originalIngredientDraft', 'deletingIngredientId', 'showIngredientDiscardConfirmation']);
 
@@ -221,7 +221,7 @@ test('ingredient actions require a manager', function (string $method) {
     $this->actingAs(User::factory()->create());
     $this->get(route('menu.ingredient'))->assertForbidden();
     $ingredient = InventoryItem::factory()->create();
-    $page = Livewire::test('pages::menu.manage');
+    $page = Livewire::test('pages::dashboard.ingredients');
     $parameters = in_array($method, ['editIngredient', 'requestIngredientDelete']) ? [$ingredient->id] : [];
     $page->call($method, ...$parameters)->assertForbidden();
     expect(DB::table('domain_outbox')->count())->toBe(0);
@@ -229,17 +229,17 @@ test('ingredient actions require a manager', function (string $method) {
     'discardIngredientChanges', 'refreshIngredients', 'requestIngredientDelete', 'closeIngredientDeleteModal', 'deleteIngredient']);
 
 test('ingredient writes require an open dialog', function (string $method) {
-    Livewire::test('pages::menu.manage')->set('section', 'ingredients')->call($method)->assertForbidden();
+    Livewire::test('pages::dashboard.ingredients')->call($method)->assertForbidden();
     expect(DB::table('domain_outbox')->count())->toBe(0);
 })->with(['saveIngredient', 'deleteIngredient']);
 
 test('ingredient page avoids unrelated collections and recipe choices remain complete', function () {
     InventoryItem::factory()->count(12)->create();
     InventoryItem::factory()->create(['name' => 'Arsip'])->delete();
-    Livewire::test('pages::menu.manage')->set('section', 'ingredients')
-        ->assertViewHas('products', fn ($rows) => $rows->isEmpty())->assertViewHas('discounts', fn ($rows) => $rows->isEmpty())
-        ->assertViewHas('categories', fn ($rows) => $rows->isEmpty())->assertViewHas('ingredients', fn ($rows) => $rows->isEmpty());
-    Livewire::test('pages::menu.manage')->set('section', 'recipes')->assertViewHas('ingredients', fn ($rows) => $rows->count() === 12);
+    Livewire::test('pages::dashboard.ingredients')
+        ->assertViewMissing('products')->assertViewMissing('discounts')
+        ->assertViewMissing('categories')->assertViewMissing('ingredients');
+    Livewire::test('pages::dashboard.recipes')->assertViewHas('ingredients', fn ($rows) => $rows->count() === 12);
 });
 
 test('ingredient overview handles long names and all stock states', function () {

@@ -56,7 +56,7 @@ test('empty menu displays a count and empty state', function () {
 
 test('product category selector has a selectable empty option and saves the first category', function () {
     $category = Category::factory()->create(['name' => 'Paket Ayam']);
-    $page = Livewire::test('pages::menu.manage')->call('createProduct')->assertSet('productCategoryId', null);
+    $page = Livewire::test('pages::dashboard.products')->call('createProduct')->assertSet('productCategoryId', null);
     $document = new DOMDocument;
     @$document->loadHTML($page->html());
     $xpath = new DOMXPath($document);
@@ -80,7 +80,7 @@ test('product category selector has a selectable empty option and saves the firs
 test('product modal resets fields uploads and validation when cancelled or reopened', function () {
     Storage::fake('public');
     $product = Product::factory()->create(['name' => 'Comfort Morning', 'price' => 20000]);
-    $page = Livewire::test('pages::menu.manage')->assertSet('showProductModal', false)
+    $page = Livewire::test('pages::dashboard.products')->assertSet('showProductModal', false)
         ->call('editProduct', $product->id)->assertSet('showProductModal', true)
         ->assertSet('productId', $product->id)->assertSet('productName', $product->name)
         ->assertSet('productCategoryId', $product->category_id)->assertSet('productPrice', '20000.00')
@@ -103,7 +103,7 @@ test('product modal resets fields uploads and validation when cancelled or reope
 test('invalid fields keep the modal open without storing images or events', function (string $field, mixed $value) {
     Storage::fake('public');
     $category = Category::factory()->create();
-    Livewire::test('pages::menu.manage')->call('createProduct')
+    Livewire::test('pages::dashboard.products')->call('createProduct')
         ->set('productName', 'Valid product')->set('productCategoryId', $category->id)->set('productPrice', '12000')
         ->set('productImage', UploadedFile::fake()->image('product.png'))
         ->set($field, $value)->call('saveProduct')->assertHasErrors($field)
@@ -123,7 +123,7 @@ test('invalid fields keep the modal open without storing images or events', func
 test('invalid images show errors without attempting a preview', function (bool $oversized) {
     Storage::fake('public');
     $image = $oversized ? UploadedFile::fake()->image('large.png')->size(2049) : UploadedFile::fake()->create('document.pdf', 10, 'application/pdf');
-    Livewire::test('pages::menu.manage')->call('createProduct')->set('productImage', $image)
+    Livewire::test('pages::dashboard.products')->call('createProduct')->set('productImage', $image)
         ->assertHasErrors(['productImage' => $oversized ? 'max' : 'image'])
         ->assertSet('showProductModal', true)->assertDontSee('Pratinjau:');
     expect(Product::count())->toBe(0)->and(DB::table('domain_outbox')->count())->toBe(0)
@@ -133,7 +133,7 @@ test('invalid images show errors without attempting a preview', function (bool $
 test('product modal creates products with optional images and durable events', function (bool $withImage) {
     Storage::fake('public');
     $category = Category::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->call('createProduct')
+    $page = Livewire::test('pages::dashboard.products')->call('createProduct')
         ->set('productName', 'New product')->set('productCategoryId', $category->id)->set('productPrice', '12000');
     if ($withImage) {
         $page->set('productImage', UploadedFile::fake()->image('product.png'))->assertSee('Pratinjau:');
@@ -157,7 +157,7 @@ test('editing preserves or replaces images through catalog commands', function (
     Storage::fake('public');
     Storage::disk('public')->put('products/original.png', 'original image');
     $product = Product::factory()->create(['image_url' => 'products/original.png', 'version' => 2]);
-    $page = Livewire::test('pages::menu.manage')->call('editProduct', $product->id)->set('productName', 'Updated product');
+    $page = Livewire::test('pages::dashboard.products')->call('editProduct', $product->id)->set('productName', 'Updated product');
     if ($replaceImage) {
         $page->set('productImage', UploadedFile::fake()->image('replacement.png'));
     }
@@ -183,7 +183,7 @@ test('command validation errors are mapped to modal fields', function () {
             throw ValidationException::withMessages(['image_url' => 'Gambar tidak dapat disimpan.']);
         }
     });
-    Livewire::test('pages::menu.manage')->call('createProduct')
+    Livewire::test('pages::dashboard.products')->call('createProduct')
         ->set('productName', 'Product')->set('productCategoryId', $category->id)->set('productPrice', '12000')
         ->call('saveProduct')
         ->assertHasErrors('productImage')->assertSet('showProductModal', true);
@@ -192,7 +192,7 @@ test('command validation errors are mapped to modal fields', function () {
 
 test('deleting refreshes the count and emits a durable event', function () {
     $product = Product::factory()->create();
-    Livewire::test('pages::menu.manage')->call('requestProductDelete', $product->id)->call('deleteProduct')
+    Livewire::test('pages::dashboard.products')->call('requestProductDelete', $product->id)->call('deleteProduct')
         ->assertSee('Belum ada produk.')->assertSee('Menampilkan 0 sampai 0 dari 0 produk');
     expect($product->fresh()->trashed())->toBeTrue()
         ->and(DB::table('domain_outbox')->where('event_name', 'ProductDeleted')->count())->toBe(1);
@@ -203,7 +203,7 @@ test('product search category pagination and refresh work together', function ()
     Product::factory()->count(11)->sequence(fn ($sequence) => ['name' => sprintf('Produk %02d', $sequence->index), 'category_id' => $category->id])->create();
     $other = Product::factory()->create(['name' => 'Produk lain']);
     Product::factory()->create(['name' => 'Dihapus'])->delete();
-    Livewire::test('pages::menu.manage')
+    Livewire::test('pages::dashboard.products')
         ->assertViewHas('productRows', fn ($rows) => $rows->count() === 10 && $rows->total() === 12)
         ->assertDontSee('Dihapus')->call('nextPage', 'productsPage')->assertSee('Menampilkan 11 sampai 12 dari 12 produk')
         ->set('productSearch', ' Produk 03 ')->assertSet('paginators.productsPage', 1)
@@ -225,7 +225,7 @@ test('menu keeps missing invalid and depleted recipes visible and derives portio
     $available = Product::factory()->withRecipe(2.55, 0.20)->create(['current_stock' => 999, 'is_available' => false]);
     $ingredient = $available->recipes->first()->inventoryItem;
     $ingredient->forceFill(['reserved_stock' => '0.35'])->save();
-    $page = Livewire::test('pages::menu.manage')
+    $page = Livewire::test('pages::dashboard.products')
         ->assertViewHas('productRows', fn ($rows) => $rows->total() === 4 && $rows->every(fn ($product) => $product->relationLoaded('category') && $product->relationLoaded('recipes') && $product->recipes->every(fn ($recipe) => $recipe->relationLoaded('inventoryItem'))))
         ->assertViewHas('productOverview', function ($rows) use ($missing, $invalid, $empty, $available): bool {
             expect($rows[$missing->id])->toBe(['status' => 'Belum ada resep', 'portions' => 0]);
@@ -242,13 +242,13 @@ test('menu keeps missing invalid and depleted recipes visible and derives portio
 
 test('menu queries only its own catalog collections and discounts retain complete product choices', function () {
     Product::factory()->count(12)->create();
-    Livewire::test('pages::menu.manage')->assertViewHas('products', fn ($rows) => $rows->isEmpty())
-        ->assertViewHas('ingredients', fn ($rows) => $rows->isEmpty())->assertViewHas('discounts', fn ($rows) => $rows->isEmpty())
-        ->set('section', 'discounts')->assertViewHas('products', fn ($rows) => $rows->count() === 12);
+    Livewire::test('pages::dashboard.products')->assertViewMissing('products')
+        ->assertViewMissing('ingredients')->assertViewMissing('discounts');
+    Livewire::test('pages::dashboard.discounts')->assertViewHas('products', fn ($rows) => $rows->count() === 12);
 });
 
 test('product editor explains missing categories and rejects deleted category selections', function () {
-    $page = Livewire::test('pages::menu.manage')->call('createProduct')
+    $page = Livewire::test('pages::dashboard.products')->call('createProduct')
         ->assertSee('Belum ada kategori.')->assertSee('Kelola kategori')
         ->set('productName', 'Produk')->set('productPrice', '10000')->call('saveProduct')->assertHasErrors('productCategoryId');
     $category = Category::factory()->create();
@@ -259,7 +259,7 @@ test('product editor explains missing categories and rejects deleted category se
 
 test('closing unchanged product drafts skips confirmation and edited drafts can be resumed', function () {
     $product = Product::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->call('editProduct', $product->id)
+    $page = Livewire::test('pages::dashboard.products')->call('editProduct', $product->id)
         ->call('requestProductClose')->assertSet('showProductModal', false)->assertDispatched('product-dialog-closed')
         ->call('editProduct', $product->id)->set('productName', 'Baru')->call('requestProductClose')
         ->assertSet('showProductDiscardConfirmation', true)->assertSet('showProductModal', true)
@@ -273,7 +273,7 @@ test('closing unchanged product drafts skips confirmation and edited drafts can 
 test('image only changes require discard confirmation', function () {
     Storage::fake('public');
     $product = Product::factory()->create();
-    Livewire::test('pages::menu.manage')->call('editProduct', $product->id)
+    Livewire::test('pages::dashboard.products')->call('editProduct', $product->id)
         ->set('productImage', UploadedFile::fake()->image('replacement.png'))->call('requestProductClose')
         ->assertSet('showProductDiscardConfirmation', true)->call('discardProductChanges')
         ->assertSet('showProductModal', false)->assertSet('productImage', null);
@@ -286,7 +286,7 @@ test('product save failure rolls back image and event writes and can be retried'
     $ingredient = $product->recipes->first()->inventoryItem;
     $stock = $ingredient->current_stock;
     $reservations = $ingredient->reserved_stock;
-    $page = Livewire::test('pages::menu.manage')->call('editProduct', $product->id)
+    $page = Livewire::test('pages::dashboard.products')->call('editProduct', $product->id)
         ->set('productName', 'Baru')->set('productImage', UploadedFile::fake()->image('replacement.png'));
     $failNextEvent = true;
     DB::listen(function (QueryExecuted $query) use (&$failNextEvent): void {
@@ -310,7 +310,7 @@ test('product save failure rolls back image and event writes and can be retried'
 test('deleted product preserves its draft and cannot be saved', function () {
     Storage::fake('public');
     $product = Product::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->call('editProduct', $product->id)
+    $page = Livewire::test('pages::dashboard.products')->call('editProduct', $product->id)
         ->set('productName', 'Baru')->set('productImage', UploadedFile::fake()->image('replacement.png'));
     $product->delete();
     $page->call('saveProduct')->assertHasErrors('productForm')->assertSee(__('catalog.errors.product_missing'))
@@ -321,7 +321,7 @@ test('deleted product preserves its draft and cannot be saved', function () {
 test('product delete cancellation and confirmed deletion reset pagination', function () {
     $products = Product::factory()->count(11)->sequence(fn ($sequence) => ['name' => sprintf('Produk %02d', $sequence->index)])->create();
     $last = $products->last();
-    $page = Livewire::test('pages::menu.manage')->call('nextPage', 'productsPage')->call('requestProductDelete', $last->id)
+    $page = Livewire::test('pages::dashboard.products')->call('nextPage', 'productsPage')->call('requestProductDelete', $last->id)
         ->assertSet('showProductDeleteModal', true)->assertSet('deletingProductId', $last->id)
         ->call('closeProductDeleteModal')->assertSet('deletingProductId', null);
     expect($last->fresh()->trashed())->toBeFalse()->and(DB::table('domain_outbox')->count())->toBe(0);
@@ -333,7 +333,7 @@ test('product delete cancellation and confirmed deletion reset pagination', func
 
 test('deleted product is rechecked on deletion confirmation', function () {
     $product = Product::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->call('requestProductDelete', $product->id);
+    $page = Livewire::test('pages::dashboard.products')->call('requestProductDelete', $product->id);
     $product->delete();
     $page->call('deleteProduct')->assertHasErrors('productDelete')->assertSee(__('catalog.errors.product_missing'))
         ->assertSet('showProductDeleteModal', true);
@@ -341,13 +341,13 @@ test('deleted product is rechecked on deletion confirmation', function () {
 });
 
 test('product actions require an active editor or deletion confirmation', function (string $action) {
-    Livewire::test('pages::menu.manage')->call($action)->assertForbidden();
+    Livewire::test('pages::dashboard.products')->call($action)->assertForbidden();
     expect(DB::table('domain_outbox')->count())->toBe(0);
 })->with(['saveProduct', 'deleteProduct']);
 
 test('product ids image path original draft and discard state are locked', function (string $property) {
     $product = Product::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->call('editProduct', $product->id);
+    $page = Livewire::test('pages::dashboard.products')->call('editProduct', $product->id);
     expect(fn () => $page->set($property, 999999))->toThrow(CannotUpdateLockedPropertyException::class);
 })->with(['productId', 'productImageUrl', 'originalProductDraft', 'deletingProductId', 'showProductDiscardConfirmation']);
 
@@ -356,14 +356,14 @@ test('product actions require a manager', function (string $method) {
     $this->get(route('menu.menu'))->assertForbidden();
     $product = Product::factory()->create();
     $parameters = in_array($method, ['editProduct', 'requestProductDelete']) ? [$product->id] : [];
-    Livewire::test('pages::menu.manage')->call($method, ...$parameters)->assertForbidden();
+    Livewire::test('pages::dashboard.products')->call($method, ...$parameters)->assertForbidden();
     expect(DB::table('domain_outbox')->count())->toBe(0);
 })->with(['createProduct', 'editProduct', 'saveProduct', 'requestProductClose', 'closeProductModal', 'continueProductEditing',
     'discardProductChanges', 'refreshProducts', 'requestProductDelete', 'closeProductDeleteModal', 'deleteProduct']);
 
 test('product deletion failure rolls back and can be retried without duplicate events', function () {
     $product = Product::factory()->create();
-    $page = Livewire::test('pages::menu.manage')->call('requestProductDelete', $product->id);
+    $page = Livewire::test('pages::dashboard.products')->call('requestProductDelete', $product->id);
     $failNextEvent = true;
     DB::listen(function (QueryExecuted $query) use (&$failNextEvent): void {
         if ($failNextEvent && str_starts_with($query->sql, 'insert into `domain_outbox`')) {
