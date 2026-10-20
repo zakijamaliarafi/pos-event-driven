@@ -23,7 +23,7 @@ document.addEventListener('recipe-row-added', (event) => {
     afterRecipeRender(() => {
         const row = [...document.querySelectorAll('[data-recipe-row]')]
             .find((element) => element.dataset.recipeRow === event.detail.key);
-        row?.querySelector('input')?.focus();
+        row?.querySelector('summary')?.focus();
     });
 });
 
@@ -41,6 +41,16 @@ document.addEventListener('keydown', (event) => {
 
     const dialog = document.querySelector('[data-recipe-editor] dialog[open]');
     if (!dialog || dialog.querySelector('button[type="submit"][data-loading]')) {
+        return;
+    }
+
+    const picker = dialog.querySelector('[data-recipe-picker][open]');
+    if (picker) {
+        event.preventDefault();
+        event.stopPropagation();
+        picker.open = false;
+        picker.querySelector('summary')?.focus();
+
         return;
     }
 
